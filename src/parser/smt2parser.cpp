@@ -2,6 +2,8 @@
 
 #include "smt2parser.h"
 #include "solver.h"
+#include "treesolver.h"
+#include "listsolver.h"
 
 
 void smt2parser::scan_core() {

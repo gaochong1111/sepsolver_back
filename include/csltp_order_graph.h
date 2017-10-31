@@ -1,59 +1,7 @@
 #ifndef CSLTP_ORDER_GRAPH_H
 #define CSLTP_ORDER_GRAPH_H
 
-#include<set>
-#include<vector>
-#include<string>
-
-
-class Vertex
-{
-public:
-        Vertex();
-        Vertex(std::string name);
-
-        std::string getName();
-
-        Vertex& operator=(const Vertex& vertex);
-        bool operator < (const Vertex& vertex) const;
-        bool operator == (const Vertex vertex) const;
-        friend std::ostream& operator << (std::ostream& os, Vertex& vertex);
-private:
-        std::string name;
-};
-
-enum LabelOp{
-        LABEL_LT=0,
-        LABEL_LE
-};
-
-
-class Edge
-{
-public:
-        Edge(Vertex v1, LabelOp lb ,Vertex v2);
-        bool operator < (const Edge& edge) const;
-        bool operator == (const Edge vertex) const;
-        Vertex getSource();
-        Vertex getDest() ;
-        LabelOp getLabel() ;
-
-        friend std::ostream& operator << (std::ostream& os, Edge& edge) ;
-
-private:
-        Vertex source;
-        Vertex dest;
-        LabelOp label;
-};
-
-
-// override the operator ==
-bool operator == (const std::set<Edge>& s1, const std::set<Edge>& s2);
-bool operator == (const std::set<Vertex>& s1, const std::set<Vertex>& s2);
-// find the position of v in vec
-int find_vertex(const std::vector<Vertex>& vec, const Vertex& v);
-
-
+#include "edge.h"
 
 
 class OrderGraph
@@ -121,25 +69,5 @@ private:
 };
 
 
-class OrderGraphSet
-{
-public:
-        /**
-         * if og does not exist then  insert it.
-         * @params og
-         */
-        void addOrderGraph(OrderGraph og) ;
-
-        bool isExist(const OrderGraph& og) const;
-
-        int size() ;
-
-        OrderGraph at(unsigned int i) ;
-
-        bool operator == (const OrderGraphSet& ogset) const;
-
-private:
-        std::vector<OrderGraph> graphs;
-};
 
 #endif // csltp_order_graph.h

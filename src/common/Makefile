@@ -1,10 +1,12 @@
 #
-# Makefile in f2
+# Makefile in utils dir
 #
 
 include ../../Make.properties
 
-all: f2.o
+OBJS=$(subst .cpp,.o,$(wildcard *.cpp))
+
+all:$(OBJS)
 
 $(DEPS):
 	$(CC) -c $^ $(CPPFLAGS)

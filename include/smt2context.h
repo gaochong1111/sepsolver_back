@@ -53,23 +53,9 @@ smt2context(z3::context& ctx, std::string log_file, bool exit_err=true):m_ctx(ct
                 return m_posf;
         }
 
-        bool is_tree() {
-                // TODO
-                for (int i=0; i<m_preds.size(); i++) {
-                        if (!m_preds[i].is_tree()) return false;
-                }
-                return true;
-        }
+        bool is_tree();
 
-        bool is_list() {
-                // TODO
-                for (int i=0; i<m_preds.size(); i++) {
-                        if (!m_preds[i].is_list()) return false;
-                }
-                return true;
-        }
-
-
+        bool is_list();
 
         bool is_no_formula() {
                 return (Z3_ast(m_posf) == 0) && (Z3_ast(m_negf) == 0);

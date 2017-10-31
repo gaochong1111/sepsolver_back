@@ -7,12 +7,6 @@ TARGET=sepsolver
 SUBDIRS=$(foreach dir,$(shell find . -mindepth 1 -type d),$(shell echo $(dir) ' '))
 
 # objs
-# PARSER_OBJS=$(subst .cpp,.o,$(PARSER_DIR)/%.cpp)
-# SOLVER_OBJS=$(subst .cpp,.o,$(SOLVER_DIR)/%.cpp)
-# UTILS_OBJS=$(subst .cpp,.o,$(UTILS_DIR)/%.cpp)
-# CPP_SRC_PATH = $(foreach dir,$(subst :, ,$(SUBDIRS)),$(wildcard $(dir)/*.cpp))
-
-# ALL_OBJS=$(subst .cpp,.o,$(CPP_SRC_PATH))
 
 all: subdirs $(TARGET)
 	mv $(TARGET) $(DISTDIR)
@@ -24,8 +18,17 @@ subdirs:
 		echo "<=== $$i"; \
 	done
 
-$(TARGET):$(TEST_OBJS)
-	ar -r $@ $^
+ALL_OBJS = $(subst .cpp,.o,$(foreach dir,$(SUBDIRS),$(wildcard $(dir)/*.cpp))) main.o
+
+$(DEPS):
+	$(CC) -c $^ $(CPPFLAGS)
+
+$(TARGET):$(ALL_OBJS)
+	$(CC) $(CPP_FLAGS) -o $@ $^ \
+	$(F_DYN_LINK_LIB) \
+	$(F_DYN_RUN_LIB)
+
+
 
 .PHONY:clean
 clean:
@@ -34,5 +37,6 @@ clean:
 		(cd $$i && $(MAKE) clean -f $(MAKEFILE)) || exit 1; \
 		echo "<=== $$i"; \
 	done
+	rm *.o
 	rm -f $(DISTDIR)/$(TARGET)
 
