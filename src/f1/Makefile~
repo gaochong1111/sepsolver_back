@@ -1,0 +1,13 @@
+#
+# Makefile in f1
+#
+
+include ../../Make.properties
+
+all: f1.o
+
+$(DEPS):
+	$(CC) -c $^ $(CPPFLAGS)
+
+clean:
+	rm -f *.o
