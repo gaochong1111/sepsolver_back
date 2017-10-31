@@ -40,10 +40,7 @@ smt2context(z3::context& ctx, std::string log_file, bool exit_err=true):m_ctx(ct
 
         int pred_size() {return m_preds.size();}
 
-        predicate get_pred(int index) {
-                assert(index < m_preds.size());
-                return m_preds[index];
-        }
+        predicate get_pred(int index);
 
         z3::expr get_negf() {
                 return m_negf;
@@ -57,17 +54,12 @@ smt2context(z3::context& ctx, std::string log_file, bool exit_err=true):m_ctx(ct
 
         bool is_list();
 
-        bool is_no_formula() {
-                return (Z3_ast(m_posf) == 0) && (Z3_ast(m_negf) == 0);
-        }
 
-        bool is_sat() {
-                return Z3_ast(m_posf) == 0;
-        }
+        bool is_no_formula() ;
 
-        bool is_entl() {
-                return (Z3_ast(m_negf) != 0) && (Z3_ast(m_posf) != 0);
-        }
+        bool is_sat() ;
+
+        bool is_entl() ;
 
 };
 

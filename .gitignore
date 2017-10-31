@@ -8,5 +8,9 @@ dist/sepsolver
 *.dot
 *.txt
 
+GPATH
+GRTAGS
+GTAGS
+
 
 

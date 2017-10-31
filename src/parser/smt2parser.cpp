@@ -1,10 +1,8 @@
 #include <cassert>
 
 #include "smt2parser.h"
-#include "solver.h"
-#include "treesolver.h"
-#include "listsolver.h"
-
+// #include "solver.h"
+#include "solverfactory.h"
 
 void smt2parser::scan_core() {
         m_cache_end = m_scanner.cache_size();
@@ -1220,22 +1218,11 @@ void smt2parser::parse_check_sat() {
 
         next();
         check_rparen("invalid check-sat, excepted ')'");
-        logger() << "solve the sat ...\n";
-
-        // solve the tree predicate case
-        if (m_ctx.is_tree()) {
-                std::cout << "tree solver.\n";
-                treesolver sol(m_ctx);
-                sol.solve();
-        } else if (m_ctx.is_list()) {
-                //TODO: solve the list predicate case
-                std::cout << "list solver.\n";
-                listsolver sol(m_ctx);
-                sol.solve();
-
-
-        } else {
-                std::cout << "unsupported. \n";
+        // logger() << "solve the sat ...\n";
+        solver* sol = solverfactory::get_solver(m_ctx);
+        if (sol != NULL) {
+                sol->solve();
+                delete sol;
         }
 }
 
