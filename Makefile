@@ -1,29 +1,8 @@
-#---------------------------------------
-# FLAGS
-#---------------------------------------
-include Make.properties
-#---------------------------------------
-# FILES
-#---------------------------------------
-SRCDIR=src
-SAMDIR=samples
-SUBDIRS=$(SRCDIR) $(SAMDIR)
-#---------------------------------------
-# RULES
-#---------------------------------------
+
+include ./Make.properties
+
 all:
-	@for i in $(SUBDIRS); do \
-		echo "===> $$i"; \
-		(cd $$i && $(MAKE) -f $(MAKEFILE)) || exit 1; \
-		echo "<=== $$i"; \
-	done
+	(cd $(SRCDIR) && $(MAKE) -f $(MAKEFILE)) || exit 1;
 
 clean:
-	@for i in $(SUBDIRS); do \
-		echo "===> $$i"; \
-		(cd $$i && $(MAKE) clean -f $(MAKEFILE)) || exit 1; \
-		echo "<=== $$i"; \
-	done
-#---------------------------------------
-# IMPLICIT RULES AND DEPENDENCIES
-#---------------------------------------
+	(cd $(SRCDIR) && $(MAKE) clean -f $(MAKEFILE)) || exit 1;

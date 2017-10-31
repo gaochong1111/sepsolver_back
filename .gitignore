@@ -5,6 +5,8 @@ dist/sepsolver
 
 #objs
 *.o
+*.dot
+*.txt
 
 
 
