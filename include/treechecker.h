@@ -5,8 +5,6 @@
 
 class treechecker :public checker {
 private:
-        bool is_repeat(z3::expr_vector vec);
-        bool is_repeat(std::vector<z3::expr> vec);
         bool is_data_var(z3::expr x);
         bool is_size_var(z3::expr x);
 

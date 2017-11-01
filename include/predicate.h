@@ -52,6 +52,8 @@ predicate(z3::func_decl fun, z3::expr_vector pars, z3::expr base_rule)
         bool is_tree();
 
         bool is_list() ;
+        int size_of_static_parameters();
+        int idx_E_gamma();
 
         friend std::ostream& operator<<(std::ostream& out, predicate& p) ;
 };

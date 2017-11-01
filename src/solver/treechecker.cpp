@@ -4,27 +4,7 @@
 /**
  *###################### treechecker ####################################3
  */
-bool treechecker::is_repeat(z3::expr_vector vec) {
-        std::set<z3::expr, exprcomp> args_set;
-        for (int i=0; i<vec.size(); i++) {
-                args_set.insert(vec[i]);
-        }
-        if (args_set.size() != vec.size()) {
-                return true;
-        }
-        return false;
-}
 
-bool treechecker::is_repeat(std::vector<z3::expr> vec) {
-        std::set<z3::expr, exprcomp> args_set;
-        for (int i=0; i<vec.size(); i++) {
-                args_set.insert(vec[i]);
-        }
-        if (args_set.size() != vec.size()) {
-                return true;
-        }
-        return false;
-}
 
 bool treechecker::is_data_var(z3::expr x) {
         if(x.get_sort().to_string() == "Real" && x.to_string().find("(:var")==0) return true;

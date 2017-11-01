@@ -20,7 +20,7 @@
 	)
  
 	(exists ((?X Sll_t) ) 
-	(and (distinct ?in ?out) 
+	(and true
 		(tobool (ssep 
 		(pto ?in (ref next ?X) ) 
 		(ls ?X ?out )

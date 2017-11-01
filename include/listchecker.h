@@ -4,6 +4,9 @@
 #include "checker.h"
 
 class listchecker :public checker {
+private:
+        std::vector<z3::expr> m_xi;
+        int index_of_pars(z3::expr x, std::vector<z3::expr>& vec);
 public:
 listchecker(predicate pred):checker(pred){}
         void check_args();

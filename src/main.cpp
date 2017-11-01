@@ -7,7 +7,6 @@
 
 using namespace std;
 
-
 string token_str[] = { "NULL_TOKEN",
                        "LEFT_PAREN",
                        "RIGHT_PAREN",
@@ -25,7 +24,6 @@ std::string file_name = "test.smt";
 void test_scanner() {
         try {
                 fstream f("test.smt");
-
                 // sexpr_manager sm;
                 z3::context ctx;
                 smt2context m_ctx(ctx, "log");

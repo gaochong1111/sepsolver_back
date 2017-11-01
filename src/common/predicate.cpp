@@ -20,3 +20,33 @@ std::ostream& operator<<(std::ostream& out, predicate& p) {
         }
         return out;
 }
+
+/**
+ * the size of static parameters for list predicate
+ * @return size
+ */
+int predicate::size_of_static_parameters() {
+        if (is_list()) {
+                int i = m_pars.size()-1;
+                for (; i>=0; i--) {
+                        if (m_pars[i].to_string().find("sta_")!=0) break;
+                }
+                return m_pars.size() - i;
+        }
+        return 0;
+}
+
+/**
+ * the index, when E occurs in gamma for list predicate
+ * @return -1, E does not occur in gamma
+ *         index
+ */
+int predicate::idx_E_gamma() {
+        if (is_list()) {
+                int size = m_pars.size() - size_of_static_parameters();
+                for (int i=1; i<size/2; i++) {
+                        if (m_rec_rules[0].get_rec_apps()[0].arg(i).hash() == m_pars[0].hash()) return i-1;
+                }
+        }
+        return -1;
+}
