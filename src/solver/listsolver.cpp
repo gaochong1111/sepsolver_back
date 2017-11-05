@@ -26,18 +26,21 @@ z3::check_result listsolver::check_sat() {
         logger() << "list sat problem: " << std::endl;
         // 1.1 compute all phi_pd
         compute_all_data_closure();
+        // std::cout << "compute closure is over.\n";
         z3::expr formula = m_ctx.get_negf();
+        logger() << "formula: " << formula << std::endl;
         // 1.2 formula -> (delta \and sigma)
         z3::expr data(z3_ctx());
         z3::expr space(z3_ctx());
         get_data_space(formula, data, space);
         z3::expr f_abs = data;
+        
+        logger() << "data: " << data << std::endl;
+        logger() << "space: " << space << std::endl;
+        
         // 1.3 space part
-        if (Z3_ast(f_abs) == 0) {
-                f_abs = abs_space(space);
-        } else {
-                f_abs = f_abs && abs_space(space);
-        }
+		f_abs = f_abs && abs_space(space);
+        
         // 1.4 sep (\phi_star)
         f_abs = f_abs && abs_phi_star();
         // f_abs = z3_ctx().bool_val(true);
@@ -341,6 +344,9 @@ int listsolver::get_numeral(z3::expr x) {
  * @return      [the abstraction]
  */
 z3::expr listsolver::pred2abs(z3::expr &atom, int i){
+		logger() << "listsolver::pred2abs \n";
+		logger() << "atom: " << atom << std::endl;
+		logger() << "i: " << i << std::endl;
         std::string source = atom.arg(0).to_string();
         std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
         // 1 introduce new vars
@@ -357,7 +363,7 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                 int index = index_of_pred(pred_name);
                 predicate pred = m_ctx.get_pred(index); // get predicate definition                
                 int size = atom.num_args() - pred.size_of_static_parameters(); // size of source and destination paramaters
-                             
+                // std::cout << "par size: " << size << std::endl;          
                 // 1.2 predicate atom
                 
                 // 1.2.1 supposing atom is empty
@@ -373,16 +379,19 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                                 or_0 = or_0 && (atom.arg(j)==atom.arg(j+size/2));
                         }
                 }
+                
+                logger() << "or_0: " << or_0 << std::endl;
 
                 // 1.2.2 supposing atom is not emtpy
                 z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
-                z3::expr_vector f_args = pred.get_pars(); // predicate parameters, formal parameters
+                z3::expr_vector args = pred.get_pars();
+                z3::expr_vector f_args(z3_ctx()); // predicate parameters, formal parameters
                 z3::expr_vector a_args(z3_ctx()); // actual parameters
+               
+				// init formla parameters and actual parameters
                 for (int i=0; i<atom.num_args(); i++) {
-                        if (atom.arg(i).get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
-                                z3::expr arg_i_int = z3_ctx().int_const(atom.arg(j).to_string().c_str());
-                                a_args.push_back(arg_i_int);
-                        } else {
+                        if (atom.arg(i).get_sort().sort_kind() != Z3_UNINTERPRETED_SORT) {
+								f_args.push_back(args[i]);
                                 a_args.push_back(atom.arg(i));
                         }
                 }
@@ -391,19 +400,24 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                 std::string k_name = m_ctx.logger().string_format("[k,%d]", i);
                 z3::expr k_i_int = z3_ctx().int_const(k_name.c_str()); // k_i
                 a_args.push_back(k_i_int);
+                
+                logger() <<"formal pars: " << f_args << std::endl;
+                logger() <<"actual pars: " << a_args << std::endl;
 
                 z3::expr or_1(z3_ctx()); // by ufld_1
                 z3::expr or_2(z3_ctx()); // by ufld_ge_2
 
                 int idx = pred.idx_E_gamma(); // check whether E ouccus in gamma
+                logger() << "idx: " << idx << std::endl;
+                
                 if (idx != -1) {
                         // E occurs in gamma TOCHECK
-                        z3::expr E = f_args[0];
+                        z3::expr E = pred.get_pars()[0];
                         z3::expr beta_idx = f_args[size/2+idx+1];
                         z3::expr beta_idx_int = z3_ctx().int_const(beta_idx.to_string().c_str());
 
                         std::string beta_idx_name = m_ctx.logger().string_format("[%s,%d]", beta_idx.to_string().c_str(), i);
-                        z3::expr beta_idx_bool = z3_ctx().bool_const(beta_idx_name);
+                        z3::expr beta_idx_bool = z3_ctx().bool_const(beta_idx_name.c_str());
                         new_bools.push_back(beta_idx_bool); // new bool var
 
                         // ufld_1
@@ -411,15 +425,17 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                         or_1 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_1.substitute(f_args, a_args));
                         // ufld_ge_2
                         z3::expr ufld_ge_2 = (E != beta_idx && k_int >= 2 && phi_pd);
-                        or_2 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_ge_2.substitute(fargs, a_args));
+                        or_2 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_ge_2.substitute(f_args, a_args));
                 } else {
                         // E does not occur in gamma 
                         // ufld_1
                         z3::expr ufld_1 = (k_int == 1 && phi_pd);
-                        or_1 = source_bool && source_int>0 && ufld_1.substitute(f_args, a_args);
+                        // std::cout << "ufld_1: " << ufld_1 << std::endl;
+                        or_1 =  source_bool && source_int>0 && ufld_1.substitute(f_args, a_args);
+                        logger() << "or_1: " << or_1 << std::endl;
                         // ufld_ge_2
                         z3::expr ufld_ge_2 = (k_int >= 2 && phi_pd);
-                        or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(fargs, a_args);
+                        or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(f_args, a_args);
                 }               
 
                 // 1.3 or

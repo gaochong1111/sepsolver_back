@@ -25,12 +25,8 @@
 	(exists ((?X Sll_t) (?x2 Int) (?l2 Int)) 
 	(and
 		(= ?l (+ ?l2 -1))
-		(<= ?l (+ ?l2 -1))
-		(>= ?l (+ ?l2 2))
-		(> ?l -2)
-		(> ?l 2)
-		(< ?l 3)
-		(> ?x (+ ?x2 -1))
+		(>= ?x 2)
+		(> ?x (+ ?x2 3))
 		(tobool (ssep 
 				(pto ?E (sref (ref next ?X) (ref data ?x)) ) 
 				(ls ?X ?x2 ?l2 ?F ?x1 ?l1)
@@ -55,12 +51,14 @@
 
 
 (assert 
+	(and
 	(tobool 
  	        (ssep 
                 (pto y_emp (ref next z_emp))
 				(ls y_emp x_emp l_emp w_emp x1_emp l1_emp)
 				(pto w_emp (ref next z_emp )) 
 		)
+	)
 	)
 )
 

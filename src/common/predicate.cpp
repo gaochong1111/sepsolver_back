@@ -31,7 +31,7 @@ int predicate::size_of_static_parameters() {
                 for (; i>=0; i--) {
                         if (m_pars[i].to_string().find("sta_")!=0) break;
                 }
-                return m_pars.size() - i;
+                return m_pars.size() - i - 1;
         }
         return 0;
 }
