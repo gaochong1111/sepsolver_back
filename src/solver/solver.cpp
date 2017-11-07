@@ -32,6 +32,11 @@ void solver::solve() {
         std::cout << info;
 }
 
+
+z3::model solver::get_model() {
+    return s.get_model();
+}
+
 /**
  * get data and space part by formula
  * @param formula : the formula

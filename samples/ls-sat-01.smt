@@ -52,7 +52,8 @@
 
 (assert 
 	(and
-	(tobool 
+	(< l_emp l1_emp)
+	(tobool
  	        (ssep 
                 (pto y_emp (ref next z_emp))
 				(ls y_emp x_emp l_emp w_emp x1_emp l1_emp)

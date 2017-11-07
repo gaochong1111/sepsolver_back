@@ -12,6 +12,7 @@ protected:
 	 smt2context& m_ctx;
      z3::expr_vector new_bools;
      z3::expr_vector delta_ge1_predicates; // phi^{>=1}_P(\alpha; \beta), corresponding to preds_array
+     z3::solver s;
 
 
 protected:
@@ -24,13 +25,15 @@ protected:
      z3::context& z3_ctx() {return m_ctx.z3_context();}
      Log& logger() {return m_ctx.logger();}
      virtual void check_preds()=0;
-     virtual z3::check_result check_sat()=0;
-     virtual z3::check_result check_entl()=0;
      virtual z3::expr pred2abs(z3::expr& atom, int i)=0;
 
+
  public:
-solver(smt2context& ctx): m_ctx(ctx), new_bools(ctx.z3_context()), delta_ge1_predicates(ctx.z3_context()) {}
+     virtual z3::check_result check_sat()=0;
+     virtual z3::check_result check_entl()=0;
+solver(smt2context& ctx): m_ctx(ctx), new_bools(ctx.z3_context()), delta_ge1_predicates(ctx.z3_context()), s(ctx.z3_context()) {}
  	void solve();
+    z3::model get_model();
 
 };
 

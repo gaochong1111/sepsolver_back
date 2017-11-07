@@ -6,6 +6,7 @@
 
 #include "smt2scanner.h"
 #include "predicate.h"
+#include "solver.h"
 
 class smt2parser {
 
@@ -46,6 +47,7 @@ public:
 
         smt2scanner              m_scanner;
         smt2context& m_ctx;
+        solver* sol;
         smt2scanner::token       m_curr;
 
         logic m_logic_name;
@@ -102,6 +104,7 @@ public:
 
         z3::symbol               m_assert;
         z3::symbol               m_check_sat;
+        z3::symbol               m_get_model;
         z3::symbol               m_define_fun;
         // z3::symbol               m_define_const;
         z3::symbol               m_declare_fun;
@@ -210,6 +213,8 @@ public:
 
         void parse_assert();
 
+        void parse_get_model();
+
         void parse_check_sat();
 
         void parse_cmd();
@@ -219,6 +224,7 @@ public:
         void init_theory();
 
         smt2parser(smt2context & ctx, std::istream & is);
+        ~smt2parser();
 
 };
 

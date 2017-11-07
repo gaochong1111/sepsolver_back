@@ -34,21 +34,24 @@ z3::check_result listsolver::check_sat() {
         z3::expr space(z3_ctx());
         get_data_space(formula, data, space);
         z3::expr f_abs = data;
-        
+
         logger() << "data: " << data << std::endl;
         logger() << "space: " << space << std::endl;
-        
+
         // 1.3 space part
-		f_abs = f_abs && abs_space(space);
-        
+        f_abs = f_abs && abs_space(space);
+
         // 1.4 sep (\phi_star)
         f_abs = f_abs && abs_phi_star();
+        logger() << "f_abs: " << f_abs << std::endl;
         // f_abs = z3_ctx().bool_val(true);
         // 1.5 solve
-        z3::solver s(z3_ctx());
+        // z3::solver s(z3_ctx());
         s.add(f_abs);
         z3::check_result result = s.check();
         // std::cout << "result: " << result << std::endl;
+
+        // std::cout << "get model: " << s.get_model() << std::endl;
         return result;
 }
 
@@ -146,6 +149,7 @@ z3::expr listsolver::compute_data_closure(predicate &pred) {
                 }
         }
 
+
         /*
         for (int i=0; i<alpha.size(); i++) {
                 std::cout << "alpha :" << alpha[i] << std::endl;
@@ -159,6 +163,7 @@ z3::expr listsolver::compute_data_closure(predicate &pred) {
                 std::cout << std::endl;
         }
         */
+
 
 
         z3::expr phi_pd = z3_ctx().bool_val(true);
@@ -207,6 +212,7 @@ z3::expr listsolver::compute_alpha_closure(std::vector<std::vector<z3::expr> > &
                 }
 
         }
+        // std::cout << "== closure item: " << closure_item << std::endl;
         // 2. <=
         z3::expr_vector le_cs(z3_ctx());
         z3::expr_vector le_xi_cs(z3_ctx());
@@ -244,11 +250,13 @@ z3::expr listsolver::compute_alpha_closure(std::vector<std::vector<z3::expr> > &
                                 closure_item = closure_item && (item.arg(0) <= con_item.arg(1) + (k-1)*c);
                         }
                         for (int j=0; j<le_xi_cs.size();j++) {
-                                z3::expr con_item = le_cs[j];
+                                z3::expr con_item = le_xi_cs[j];
                                 closure_item = closure_item && (item.arg(0) <= con_item.arg(1) + (k-1)*c);
                         }
                 }
         }
+        // std::cout << "<= closure item: " << closure_item << std::endl;
+
 
         // 3. >=
         z3::expr_vector ge_cs(z3_ctx());
@@ -277,6 +285,7 @@ z3::expr listsolver::compute_alpha_closure(std::vector<std::vector<z3::expr> > &
                         }
                 }
         }
+        // std::cout << ">= closure item: " << closure_item << std::endl;
 
         for (int i=0; i<ge_gamma_cs.size(); i++) {
                 z3::expr item = ge_gamma_cs[i];
@@ -287,11 +296,13 @@ z3::expr listsolver::compute_alpha_closure(std::vector<std::vector<z3::expr> > &
                                 closure_item = closure_item && (item.arg(0) >= con_item.arg(1) + (k-1)*c);
                         }
                         for (int j=0; j<ge_xi_cs.size();j++) {
-                                z3::expr con_item = ge_cs[j];
+                                z3::expr con_item = ge_xi_cs[j];
                                 closure_item = closure_item && (item.arg(0) >= con_item.arg(1) + (k-1)*c);
                         }
                 }
         }
+        // std::cout << ">= closure item: " << closure_item << std::endl;
+
 
         return closure_item;
 }
@@ -344,16 +355,16 @@ int listsolver::get_numeral(z3::expr x) {
  * @return      [the abstraction]
  */
 z3::expr listsolver::pred2abs(z3::expr &atom, int i){
-		logger() << "listsolver::pred2abs \n";
-		logger() << "atom: " << atom << std::endl;
-		logger() << "i: " << i << std::endl;
+        logger() << "listsolver::pred2abs \n";
+        logger() << "atom: " << atom << std::endl;
+        logger() << "i: " << i << std::endl;
         std::string source = atom.arg(0).to_string();
         std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
         // 1 introduce new vars
         z3::expr source_bool = z3_ctx().bool_const(new_name.c_str()); // [Z1,i]
         new_bools.push_back(source_bool);
         z3::expr source_int = z3_ctx().int_const(source.c_str()); // Z1
-       
+
         z3::expr atom_f(z3_ctx());
         if (atom.decl().name().str() == "pto") {
                 // 1.1 pto atom
@@ -361,15 +372,13 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
         } else {
                 std::string pred_name = atom.decl().name().str();
                 int index = index_of_pred(pred_name);
-                predicate pred = m_ctx.get_pred(index); // get predicate definition                
+                predicate pred = m_ctx.get_pred(index); // get predicate definition
                 int size = atom.num_args() - pred.size_of_static_parameters(); // size of source and destination paramaters
-                // std::cout << "par size: " << size << std::endl;          
                 // 1.2 predicate atom
-                
                 // 1.2.1 supposing atom is empty
                 z3::expr or_0(z3_ctx());
                 z3::expr dest_int = z3_ctx().int_const(atom.arg(size/2).to_string().c_str());
-                or_0 = !source_bool && (source_int == dest_int && source_int == 0);
+                or_0 = !source_bool && (source_int == dest_int);
                 for (int j=1; j<size/2;j++) {
                         if (atom.arg(j).get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
                                 z3::expr arg_j_int = z3_ctx().int_const(atom.arg(j).to_string().c_str());
@@ -379,7 +388,7 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                                 or_0 = or_0 && (atom.arg(j)==atom.arg(j+size/2));
                         }
                 }
-                
+
                 logger() << "or_0: " << or_0 << std::endl;
 
                 // 1.2.2 supposing atom is not emtpy
@@ -387,11 +396,11 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                 z3::expr_vector args = pred.get_pars();
                 z3::expr_vector f_args(z3_ctx()); // predicate parameters, formal parameters
                 z3::expr_vector a_args(z3_ctx()); // actual parameters
-               
-				// init formla parameters and actual parameters
+
+                // init formla parameters and actual parameters
                 for (int i=0; i<atom.num_args(); i++) {
                         if (atom.arg(i).get_sort().sort_kind() != Z3_UNINTERPRETED_SORT) {
-								f_args.push_back(args[i]);
+                                f_args.push_back(args[i]);
                                 a_args.push_back(atom.arg(i));
                         }
                 }
@@ -400,7 +409,7 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                 std::string k_name = m_ctx.logger().string_format("[k,%d]", i);
                 z3::expr k_i_int = z3_ctx().int_const(k_name.c_str()); // k_i
                 a_args.push_back(k_i_int);
-                
+
                 logger() <<"formal pars: " << f_args << std::endl;
                 logger() <<"actual pars: " << a_args << std::endl;
 
@@ -409,11 +418,11 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
 
                 int idx = pred.idx_E_gamma(); // check whether E ouccus in gamma
                 logger() << "idx: " << idx << std::endl;
-                
+
                 if (idx != -1) {
                         // E occurs in gamma TOCHECK
-                        z3::expr E = pred.get_pars()[0];
-                        z3::expr beta_idx = f_args[size/2+idx+1];
+                        z3::expr E = atom.arg(0);
+                        z3::expr beta_idx = atom.arg(size/2+idx+1);
                         z3::expr beta_idx_int = z3_ctx().int_const(beta_idx.to_string().c_str());
 
                         std::string beta_idx_name = m_ctx.logger().string_format("[%s,%d]", beta_idx.to_string().c_str(), i);
@@ -421,13 +430,16 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                         new_bools.push_back(beta_idx_bool); // new bool var
 
                         // ufld_1
-                        z3::expr ufld_1 = (E == beta_idx && k_int == 1 && phi_pd);
+                        z3::expr ufld_1 = (source_int == beta_idx_int && k_int == 1 && phi_pd);
+                        logger() << "ufld_1: " << ufld_1 << std::endl;
                         or_1 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_1.substitute(f_args, a_args));
+                        logger() << "or_1: " << or_1 << std::endl;
                         // ufld_ge_2
-                        z3::expr ufld_ge_2 = (E != beta_idx && k_int >= 2 && phi_pd);
+                        z3::expr ufld_ge_2 = (source_int != beta_idx_int && k_int >= 2 && phi_pd);
                         or_2 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_ge_2.substitute(f_args, a_args));
+                        logger() << "or_2: " << or_2 << std::endl;
                 } else {
-                        // E does not occur in gamma 
+                        // E does not occur in gamma
                         // ufld_1
                         z3::expr ufld_1 = (k_int == 1 && phi_pd);
                         // std::cout << "ufld_1: " << ufld_1 << std::endl;
@@ -436,7 +448,8 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                         // ufld_ge_2
                         z3::expr ufld_ge_2 = (k_int >= 2 && phi_pd);
                         or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(f_args, a_args);
-                }               
+                        logger() << "or_2: " << or_2 << std::endl;
+                }
 
                 // 1.3 or
                 atom_f = or_0 || or_1 || or_2;

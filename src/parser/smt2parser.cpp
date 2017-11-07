@@ -1,7 +1,7 @@
 #include <cassert>
 
 #include "smt2parser.h"
-// #include "solver.h"
+
 #include "solverfactory.h"
 
 void smt2parser::scan_core() {
@@ -1219,10 +1219,25 @@ void smt2parser::parse_check_sat() {
         next();
         check_rparen("invalid check-sat, excepted ')'");
         // logger() << "solve the sat ...\n";
-        solver* sol = solverfactory::get_solver(m_ctx);
+        if (sol == NULL) {
+                sol = solverfactory::get_solver(m_ctx);
+        }
         if (sol != NULL) {
                 sol->solve();
-                delete sol;
+        }
+}
+
+
+/**
+ * parse (get-model)
+ */
+void smt2parser::parse_get_model() {
+        assert(curr_is_identifier());
+        assert(m_get_model ==  curr_id());
+        next();
+        check_rparen("invalid get-model, excepted ')'");
+        if (sol != NULL && sol->check_sat() != z3::unsat) {
+                std::cout <<"Model:\n" << sol->get_model();
         }
 }
 
@@ -1258,6 +1273,11 @@ void smt2parser::parse_cmd() {
 
         if (s == m_check_sat) {
                 parse_check_sat();
+                return;
+        }
+
+        if (s == m_get_model) {
+                parse_get_model();
                 return;
         }
 
@@ -1368,6 +1388,7 @@ void smt2parser::init_theory() {
 
 smt2parser::smt2parser(smt2context & ctx, std::istream & is):
         m_ctx(ctx),
+        sol(0),
         m_scanner(ctx, is),
         m_curr(smt2scanner::NULL_TOKEN),
         //   m_curr_cmd(0),
@@ -1390,6 +1411,7 @@ smt2parser::smt2parser(smt2context & ctx, std::istream & is):
         // m_lblpos(ctx.z3_context().str_symbol(":lblpos")),
         m_assert(ctx.z3_context().str_symbol("assert")),
         m_check_sat(ctx.z3_context().str_symbol("check-sat")),
+        m_get_model(ctx.z3_context().str_symbol("get-model")),
         m_define_fun(ctx.z3_context().str_symbol("define-fun")),
         // m_define_const(ctx.z3_context().str_symbol("define-const")),
         m_declare_fun(ctx.z3_context().str_symbol("declare-fun")),
@@ -1413,4 +1435,10 @@ smt2parser::smt2parser(smt2context & ctx, std::istream & is):
         init_theory();
 
         // updt_params();
+}
+
+smt2parser::~smt2parser() {
+        if (sol != NULL) {
+                delete sol;
+        }
 }

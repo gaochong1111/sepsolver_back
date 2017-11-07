@@ -84,6 +84,10 @@ void listchecker::check_rec_rule(pred_rule &rule) {
                                 throw smt2exception("the data item  of recursive rule of  predicate must be like alpha_i < c or alpha_i < xi_j + c or alpha_i < gamma_i + c. \n");
                         }
                         z3::expr other = data_item.arg(1);
+                        if (!other.is_app()) {
+                                throw smt2exception("the data item  of recursive rule of  predicate must be like alpha_i < c or alpha_i < xi_j + c or alpha_i < gamma_i + c. \n");
+                        }
+
                         if (other.num_args() != 2) {
                                 if (!is_numeral(other)) {
                                         throw smt2exception("the data item  of recursive rule of  predicate must be like alpha_i < c or alpha_i < xi_j + c or alpha_i < gamma_i + c. \n");
@@ -125,7 +129,6 @@ void listchecker::check_rec_rule(pred_rule &rule) {
                 for (int i=0; i<refs.num_args(); i++) {
                         z3::expr ref = refs.arg(i);
                         z3::expr f_dest = ref.arg(1);
-                        // TODO
                         int idx_i = index_of_pars(f_dest, alpha);
                         if (idx_i != -1) {
                                 alpha_i_flags[idx_i] = 1;
@@ -134,8 +137,7 @@ void listchecker::check_rec_rule(pred_rule &rule) {
                                 if (idx_j != -1) {
                                         xi_j_flags[idx_j] = 1;
                                 } else if (f_dest.to_string().find("(:var") == 0) {
-                                        if (f_dest.hash() == rec_app.arg(0).hash()) {
-                                        } else {
+                                       if (i==0 && f_dest.hash() != rec_app.arg(0).hash()) {
                                                 throw smt2exception("the location field of pto atom in the recursive rule of  predicate from exists parameters  must be the first parameter of recursive application. \n");
                                         }
                                 }
