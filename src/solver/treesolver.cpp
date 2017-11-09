@@ -107,6 +107,13 @@ z3::expr treesolver::pred2abs(z3::expr &atom, int i) {
         return atom_f;
 }
 
+/**
+ * TODO.
+ */
+std::string treesolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i) {
+        return "";
+}
+
 
 /**
  * compute all predicate delta_ge1_p (delta_ge1_predicates)

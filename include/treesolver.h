@@ -40,6 +40,7 @@ public:
         z3::check_result check_sat();
         z3::check_result check_entl();
         z3::expr pred2abs(z3::expr& atom, int i);
+        std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i);
 };
 
 

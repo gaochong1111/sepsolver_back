@@ -34,7 +34,43 @@ void solver::solve() {
 
 
 z3::model solver::get_model() {
+    z3::model m = s.get_model();
+
+    z3::expr formula = m_ctx.get_negf();
+    z3::expr data(z3_ctx());
+    z3::expr space(z3_ctx());
+    get_data_space(formula, data, space);
+
+    for (int i=0; i<space.num_args(); i++) {
+        //1.1 fetch atom
+        z3::expr atom = space.arg(i);
+
+        std::string atom_str = get_model_of_atom(m, atom, i);
+    }
+
     return s.get_model();
+}
+
+/**
+ * get interpretation of exp in m
+ * @param m : model
+ * @param expr : exp
+ * @return expr
+ */
+z3::expr solver::get_interp(z3::model &m, z3::expr exp) {
+
+    z3::expr nil = z3_ctx().int_const("nil");
+    if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+        z3::expr exp_int = z3_ctx().int_const(exp.to_string().c_str());
+        if (m.has_interp(exp_int.decl())) {
+            return m.get_const_interp(exp_int.decl());
+        }
+    } else {
+        if (m.has_interp(exp.decl())) {
+            return m.get_const_interp(exp.decl());
+        }
+    }
+    return nil;
 }
 
 /**

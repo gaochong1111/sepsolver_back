@@ -15,7 +15,7 @@
 				(= ?E ?F)
 				(= ?P ?L)
 				(= ?x1 ?x2)
-				(= ?len1 ?len2) 
+				(= ?len1 ?len2)
 				(tobool emp)
 			)
 			(exists
@@ -43,17 +43,18 @@
 (declare-fun x2() Int)
 (declare-fun len1() Int)
 (declare-fun len2() Int)
-;(declare-fun n() Int)
+(declare-fun x() Int)
 
 
 (assert
 	(and
 		;; (distinct E1 E4) ;; unsat
-		(= E1 E4) ;; sat
-		(= len1 (+ len2 1))
+		;; (= E1 E4) ;; sat
+		(= len1 (+ len2 3))
+		(>= len2 0)
 		(tobool
 			(ssep
-				(pto E3 (sref (ref next E4) (ref prev E2)))
+				(pto E3 (sref (ref next E4) (ref prev E2) (ref data x)))
 				(dll E1 E3 x1 len1 E2 E4 x2 len2)
 			)
 		)
@@ -61,4 +62,6 @@
 )
 
 (check-sat)
+;; sat
+(get-model)
 

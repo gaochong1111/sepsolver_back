@@ -348,6 +348,8 @@ int listsolver::get_numeral(z3::expr x) {
             && (x.decl().name().str() == "to_real" || x.decl().name().str() == "to_int")) return get_numeral(x.arg(0));
         return 0;
 }
+
+
 /**
  * atom in formula to abstraction
  * @param  atom [the atom in formula, like p(Z1, mu; Z2, nu, chi) or (pto Z (*))]
@@ -455,4 +457,156 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i){
                 atom_f = or_0 || or_1 || or_2;
         }
         return atom_f;
+}
+
+
+/**
+ * atom in m -> dot string
+ */
+std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i) {
+        std::string s = "";
+        if (atom.decl().name().str() == "pto") {
+                // 1.1 pto atom
+                std::string node_str="";
+                std::string edge_str="";
+
+                z3::expr source = atom.arg(0);
+                z3::expr source_interp = get_interp(m, source);
+                std::string node_name = logger().string_format("\"node_%s\"", source_interp.to_string().c_str());
+                node_str = logger().string_format("%s [label=\"<f0>%s:(%s)", node_name.c_str(), source.to_string().c_str(), source_interp.to_string().c_str());
+
+                z3::expr sref = atom.arg(1);
+                if (sref.decl().name().str() == "sref") {
+                        for (int j=0; j<sref.num_args(); j++) {
+                                z3::expr ref = sref.arg(j);
+                                node_str += logger().string_format("%s", get_str_field(m, ref, node_name, edge_str).c_str());
+                        }
+                } else {
+                        node_str += logger().string_format("%s", get_str_field(m, sref, node_name, edge_str).c_str());
+                }
+                node_str += "\"];\n";
+                // std::cout << "node_str: " << node_str << std::endl;
+                // std::cout << "edge_str: \n" << edge_str << std::endl;
+
+        } else {
+                //1.2 predicate atom
+                // 1.2.1 get k
+/*
+                std::string node_str="";
+                std::string edge_str="";
+                std::string k_name = m_ctx.logger().string_format("[k,%d]", i);
+                z3::expr k_i_int = z3_ctx().int_const(k_name.c_str()); // k_i
+                z3::expr k_i_interp = get_interp(m, k_i_int);
+                int k = k_i_interp.get_numeral_int();
+                std::cout << "k: " << k << std::endl;
+                // 1.2.2 get predicate
+                std::string pred_name = atom.decl().name().str();
+                int index = index_of_pred(pred_name);
+                predicate pred = m_ctx.get_pred(index); // get predicate definition
+                pred_rule rule = pred.get_rule(0);
+                z3::expr data = rule.get_data();
+                z3::expr pto = rule.get_pto();
+                z3::expr rec_app = rule.get_rec_apps()[0];
+
+                z3::expr_vector f_args = pred.get_pars(); // predicate parameters, formal parameters
+
+
+                z3::expr_vector a_args(z3_ctx()); // actual parameters
+
+                // init formla parameters and actual parameters
+                // atom = m.eval(atom);
+                for (int i=0; i<atom.num_args(); i++) {
+                        a_args.push_back(atom.arg(i));
+                }
+
+                z3::expr_vector x_h(z3_ctx());
+                rule.get_x_h(x_h);
+                z3::expr_vector x_h_cons(z3_ctx());
+                for (int j=0; j<x_h.size(); j++) {
+                        f_args.push_back(x_h[j]);
+                        z3::sort st = x_h[j].get_sort();
+                        std::string name = x_h[j].to_string();
+                        name = name.replace(name.find(":"), 1, "");
+                        name = name.replace(name.find(" "), 1, "_");
+                        std::string ss =  name.substr(1, name.length()-2);
+                        x_h_cons.push_back(z3_ctx().constant(ss.c_str(), st));
+                }
+
+                for (int j=0; j<x_h_cons.size(); j++) {
+                        a_args.push_back(x_h_cons[j]);
+                }
+
+                */
+
+
+                // pto = pto.substitute(f_args, a_args);
+
+/*
+                // f_args, a_args, m,
+                data = data.substitute(f_args, a_args);
+                z3::solver sol(z3_ctx());
+                sol.add(m.eval(data));
+                // sol.add(data);
+                sol.check();
+                z3::model data_m = sol.get_model();
+                std::cout << "data model: " << data_m << std::endl;
+
+                // pto, m, m1
+                pto = pto.substitute(f_args, a_args);
+
+
+                z3::expr source = pto.arg(0);
+                z3::expr source_interp = get_interp(m, source);
+                s = logger().string_format("\"node_%s\" [label=\"<f0>%s:(%s)", source_interp.to_string().c_str(), source.to_string().c_str(), source_interp.to_string().c_str());
+
+                z3::expr sref = pto.arg(1);
+                if (sref.decl().name().str() == "sref") {
+                        for (int j=0; j<sref.num_args(); j++) {
+                                z3::expr ref = sref.arg(j);
+                                z3::expr dest = ref.arg(1);
+                                z3::expr dest_interp = get_interp(m, dest);
+                                if (dest_interp.to_string() == "nil") {
+                                        dest_interp = get_interp(data_m, dest);
+                                }
+                                s = logger().string_format("%s%s(%s)", s.c_str(),get_str_field(m, ref).c_str(), dest_interp.to_string().c_str());
+                        }
+                } else {
+                        s = logger().string_format("%s%s", s.c_str(),get_str_field(m, sref).c_str());
+                }
+                s = logger().string_format("%s\"];\n", s.c_str());
+
+
+*/
+                // rec_app = rec_app.substitute(f_args, a_args);
+                // rec_app = data_m.eval(rec_app);
+
+
+
+                // data = data.substitute(x_h, x_h_cons);
+                // std::cout << "data: " << data << std::endl;
+                // std::cout << "rec_app: " << rec_app << std::endl;
+                // j==1
+
+                // j==k
+        }
+        // std::cout << "atom_str: " << s << std::endl;
+        return s;
+}
+
+std::string listsolver::get_str_field(z3::model &m, z3::expr &ref, std::string& node_name, std::string& edge_str) {
+        std::string flag_str = "";
+        z3::expr dest = ref.arg(1);
+        z3::expr dest_interp = get_interp(m, dest);
+        if (ref.arg(0).to_string() == "prev") {
+                flag_str = "<f1>prev";
+                edge_str = logger().string_format("%s%s:f1->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), dest_interp.to_string().c_str());
+        } else if (ref.arg(0).to_string() == "next") {
+                flag_str = "<f2>next";
+                edge_str = logger().string_format("%s%s:f2->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), dest_interp.to_string().c_str());
+        } else {
+                flag_str = "<f3>data";
+        }
+
+
+        return logger().string_format("|%s:%s:(%s)",  flag_str.c_str(), dest.to_string().c_str(), dest_interp.to_string().c_str());
 }

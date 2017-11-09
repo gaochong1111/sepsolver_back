@@ -24,9 +24,12 @@ protected:
      smt2context& get_ctx() {return m_ctx;}
      z3::context& z3_ctx() {return m_ctx.z3_context();}
      Log& logger() {return m_ctx.logger();}
+
+
      virtual void check_preds()=0;
      virtual z3::expr pred2abs(z3::expr& atom, int i)=0;
-
+     virtual std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i)=0;
+     z3::expr get_interp(z3::model& m, z3::expr exp);
 
  public:
      virtual z3::check_result check_sat()=0;
