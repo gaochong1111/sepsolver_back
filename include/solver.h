@@ -28,7 +28,7 @@ protected:
 
      virtual void check_preds()=0;
      virtual z3::expr pred2abs(z3::expr& atom, int i)=0;
-     virtual std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i)=0;
+     virtual std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i, int n)=0;
      z3::expr get_interp(z3::model& m, z3::expr exp);
 
  public:

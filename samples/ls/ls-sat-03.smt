@@ -24,7 +24,7 @@
 			(exists 
 				((?u Sll_t) (?dt3 Int) (?len3 Int)) 
 				(and  	
-					(<= ?dt1 (+ ?dt3 0))
+					(< ?dt1 (+ ?dt3 0))
 					(= ?len1 (+ ?len3 1))
 					(tobool (ssep 
 						(pto ?in (sref (ref next ?u) (ref data ?dt1)) ) 
@@ -53,9 +53,11 @@
 (assert 
 	(and
 	(distinct d1 d2)
+	(= n1 (+ n2 3))
 	(tobool 
  	        (ssep 
-                (pto y_emp (sref (ref next z_emp) (ref data d1)) )
+                ;; (pto y_emp (sref (ref next z_emp) (ref data d1)) )
+		        (pto z_emp (sref (ref next y_emp) (ref data d1)) )
 			    (lsls y_emp d1 n1 w_emp d2 n2)
 		)
 	)
@@ -63,5 +65,5 @@
 )
 
 (check-sat)
-
+(get-model)
 ;; unsat

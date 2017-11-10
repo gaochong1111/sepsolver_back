@@ -41,13 +41,24 @@ z3::model solver::get_model() {
     z3::expr space(z3_ctx());
     get_data_space(formula, data, space);
 
-    for (int i=0; i<space.num_args(); i++) {
+    std::ofstream out("model.dot");
+    if (!out) return m;
+    out<<"digraph g {\n";
+    out<<"graph [rankdir=\"LR\"];\n";
+    out<<"node [fontsize=\"16\" shape=\"record\"];\n";
+
+    int n = space.num_args();
+
+    for (int i=0; i<n; i++) {
         //1.1 fetch atom
         z3::expr atom = space.arg(i);
-
-        std::string atom_str = get_model_of_atom(m, atom, i);
+        //1.2 get_model_str
+        std::string atom_str = get_model_of_atom(m, atom, i, n);
+        out << atom_str;
     }
+    out<<"}\n";
 
+    out.close();
     return s.get_model();
 }
 

@@ -13,7 +13,8 @@ private:
         int index_of_vec(z3::expr x, z3::expr_vector& vec);
         z3::expr compute_alpha_closure(std::vector<std::vector<z3::expr>>& data_items, z3::expr_vector& xi, z3::expr& gamma_i, z3::expr& beta_i);
 
-        std::string get_str_field(z3::model& m, z3::expr& ref, std::string& node_name, std::string& edge_str);
+        std::string get_str_field(z3::model& m, z3::expr& ref, std::string& node_name, int n, std::string& edge_str);
+        bool is_allocated(z3::model& m, z3::expr& source, int n);
 
 public:
 listsolver(smt2context& ctx) : solver(ctx){}
@@ -21,7 +22,7 @@ listsolver(smt2context& ctx) : solver(ctx){}
         z3::check_result check_sat();
         z3::check_result check_entl();
         z3::expr pred2abs(z3::expr& atom, int i);
-        std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i);
+        std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i, int n);
 };
 
 

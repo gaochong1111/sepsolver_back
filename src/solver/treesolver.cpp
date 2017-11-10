@@ -110,7 +110,7 @@ z3::expr treesolver::pred2abs(z3::expr &atom, int i) {
 /**
  * TODO.
  */
-std::string treesolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i) {
+std::string treesolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, int n) {
         return "";
 }
 

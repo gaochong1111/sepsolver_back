@@ -21,7 +21,7 @@
 			(exists
 				((?X Ldll_t) (?x3 Int) (?len3 Int))
 				(and					
-					(<= ?x1 (+ ?x3 0))
+					(< ?x1 (+ ?x3 0))
 					(= ?len1 (+ ?len3 1))
 					(tobool
 						(ssep
@@ -50,7 +50,7 @@
 	(and
 		;; (distinct E1 E4) ;; unsat
 		;; (= E1 E4) ;; sat
-		(= len1 (+ len2 3))
+		(= len1 (+ len2 10))
 		(>= len2 0)
 		(tobool
 			(ssep

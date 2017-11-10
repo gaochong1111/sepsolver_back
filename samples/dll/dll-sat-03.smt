@@ -53,6 +53,7 @@
 )
 
 (check-sat)
+(get-model)
 
 
 ;; sat
