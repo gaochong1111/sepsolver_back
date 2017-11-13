@@ -594,7 +594,7 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                                                 } else if(k == 2){
                                                                         next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
                                                                 } else {
-                                                                        next_str = "X_1";
+                                                                        next_str = logger().string_format("%s_X_1", pred_name.c_str());
                                                                 }
 
                                                                 flag_str = logger().string_format("<f2>next:%s", next_str.c_str());
@@ -680,7 +680,7 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                                                 } else if(k-1 == node_i){
                                                                         next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
                                                                 } else {
-                                                                        next_str = logger().string_format("X_%d", node_i);
+                                                                        next_str = logger().string_format("%s_X_%d", pred_name.c_str(), node_i);
                                                                 }
 
                                                                 flag_str = logger().string_format("<f2>next:(%s)", next_str.c_str());
@@ -749,7 +749,8 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                                                 } else if(k == 2){
                                                                         next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
                                                                 } else {
-                                                                        next_str = "X_1";
+                                                                        next_str = logger().string_format("%s_X_1", pred_name.c_str());
+
                                                                 }
 
                                                                 flag_str = logger().string_format("<f2>next:%s", next_str.c_str());
@@ -822,10 +823,8 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                                         if (ref.arg(0).to_string() == "next") {
                                                                 if (k==node_i) {
                                                                         next_str =  get_interp(m, atom.arg(size/2)).to_string();
-                                                                } else if(k-1 == node_i){
-                                                                        next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
                                                                 } else {
-                                                                        next_str = logger().string_format("X_%d", node_i);
+                                                                        next_str = logger().string_format("%s_X_%d", pred_name.c_str(), node_i);
                                                                 }
 
                                                                 flag_str = logger().string_format("<f2>next:(%s)", next_str.c_str());
@@ -833,7 +832,7 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                                                         edge_str += logger().string_format("%s:f2->\"node_%s\":f0;\n", node_name.c_str(), next_str.c_str());
                                                                 }
                                                         } else {
-                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());;
+                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());
                                                         }
                                                         node_str += logger().string_format("|%s", flag_str.c_str());
                                                 }
