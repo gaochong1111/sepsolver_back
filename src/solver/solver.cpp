@@ -47,6 +47,25 @@ z3::model solver::get_model() {
     out<<"graph [rankdir=\"LR\"];\n";
     out<<"node [fontsize=\"16\" shape=\"record\"];\n";
 
+    out << "subgraph cluster1 {\n label=\"(Stack)\"\n";
+
+    int num = m.num_consts();
+
+    out << "satck [label=\"";
+    for (int i=0; i<num; i++) {
+        z3::func_decl x = m.get_const_decl(i);
+        z3::expr x_interp = m.get_const_interp(x);
+        if (x.name().str().find("[") != 0) {
+            out <<"|" <<x.name() << ":" << x_interp;
+        }
+    }
+    out << "\"]\n";
+
+
+
+    out << "}\n";
+
+    out << "subgraph cluster2 {\n label=\"(Heap)\"\n";
     int n = space.num_args();
 
     for (int i=0; i<n; i++) {
@@ -56,7 +75,8 @@ z3::model solver::get_model() {
         std::string atom_str = get_model_of_atom(m, atom, i, n);
         out << atom_str;
     }
-    out<<"}\n";
+
+    out<<"}\n}\n";
 
     out.close();
     return s.get_model();
@@ -71,10 +91,13 @@ z3::model solver::get_model() {
 z3::expr solver::get_interp(z3::model &m, z3::expr exp) {
 
     z3::expr nil = z3_ctx().int_const("nil");
+    // std::cout << "exp: " << exp << std::endl;
     if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
         z3::expr exp_int = z3_ctx().int_const(exp.to_string().c_str());
         if (m.has_interp(exp_int.decl())) {
             return m.get_const_interp(exp_int.decl());
+        } else if (exp.to_string().find("var_")==0) {
+            return exp;
         }
     } else {
         if (m.has_interp(exp.decl())) {
@@ -117,13 +140,13 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
 							data_items.push_back(formula.arg(i));
 					}
 			}
-			
+			//
 			if (data_items.size() > 0) {
 				data = mk_and(data_items);
 			} else {
 				data = z3_ctx().bool_val(true);
 			}
-			
+			//
 			if (i != formula.num_args()) {
 					space = formula.arg(i).arg(0);
 			}

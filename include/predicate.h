@@ -55,6 +55,8 @@ predicate(z3::func_decl fun, z3::expr_vector pars, z3::expr base_rule)
         int size_of_static_parameters();
         int idx_E_gamma();
 
+        z3::expr get_plfld();
+
         friend std::ostream& operator<<(std::ostream& out, predicate& p) ;
 };
 

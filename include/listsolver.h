@@ -13,8 +13,10 @@ private:
         int index_of_vec(z3::expr x, z3::expr_vector& vec);
         z3::expr compute_alpha_closure(std::vector<std::vector<z3::expr>>& data_items, z3::expr_vector& xi, z3::expr& gamma_i, z3::expr& beta_i);
 
-        std::string get_str_field(z3::model& m, z3::expr& ref, std::string& node_name, int n, std::string& edge_str);
         bool is_allocated(z3::model& m, z3::expr& source, int n);
+        void write_pto(z3::model& m, z3::expr& pto, int i, int n, std::string& node_str, std::string& edge_str);
+        void write_pred_pto(z3::model& m, z3::model& data_m, z3::expr& pto, int i, int n, z3::expr& plfld_interp, z3::expr& plfld, int node_i, int k, std::string& node_str, std::string& edge_str);
+
 
 public:
 listsolver(smt2context& ctx) : solver(ctx){}

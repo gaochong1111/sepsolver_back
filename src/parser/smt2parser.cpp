@@ -717,11 +717,11 @@ void smt2parser::parse_expr() {
 
 
         /*
-        logger() << "varstack\n";
-        for (int i=0; i<m_sorted_var_stack.size(); i++) {
-                logger() << "var:"<<i<<" :" << m_sorted_var_stack[i] << std::endl;
-        }
-        logger() << "varstack\n";
+          logger() << "varstack\n";
+          for (int i=0; i<m_sorted_var_stack.size(); i++) {
+          logger() << "var:"<<i<<" :" << m_sorted_var_stack[i] << std::endl;
+          }
+          logger() << "varstack\n";
         */
 
         do {
@@ -1237,7 +1237,8 @@ void smt2parser::parse_get_model() {
         next();
         check_rparen("invalid get-model, excepted ')'");
         if (sol != NULL && sol->check_sat() != z3::unsat) {
-                std::cout <<"Model:\n" << sol->get_model();
+                //std::cout <<"Model:\n" <<;
+                sol->get_model();
         }
 }
 

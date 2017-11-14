@@ -50,7 +50,7 @@
 	(and
 		;; (distinct E1 E4) ;; unsat
 		;; (= E1 E4) ;; sat
-		(= len1 (+ len2 10))
+		(= len1 (+ len2 3))
 		(>= len2 0)
 		(tobool
 			(ssep

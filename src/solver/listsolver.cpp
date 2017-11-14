@@ -475,21 +475,8 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                 std::string node_str="";
                 std::string edge_str="";
 
-                z3::expr source = atom.arg(0);
-                z3::expr source_interp = get_interp(m, source);
-                std::string node_name = logger().string_format("\"node_%s\"", source_interp.to_string().c_str());
-                node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i, source_interp.to_string().c_str());
+                write_pto(m, atom, i, n, node_str, edge_str);
 
-                z3::expr sref = atom.arg(1);
-                if (sref.decl().name().str() == "sref") {
-                        for (int j=0; j<sref.num_args(); j++) {
-                                z3::expr ref = sref.arg(j);
-                                node_str += logger().string_format("%s", get_str_field(m, ref, node_name, n, edge_str).c_str());
-                        }
-                } else {
-                        node_str += logger().string_format("%s", get_str_field(m, sref, node_name, n, edge_str).c_str());
-                }
-                node_str += "\"];\n";
                 // std::cout << "node_str: " << node_str << std::endl;
                 // std::cout << "edge_str: \n" << edge_str << std::endl;
 
@@ -519,13 +506,16 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                         z3::expr data = rule.get_data();
                         z3::expr pto = rule.get_pto();
                         z3::expr rec_app = rule.get_rec_apps()[0];
+                        z3::expr plfld = pred.get_plfld();
+
+                        // std::cout << "plfld: " << pred.get_plfld() << std::endl;
 
                         z3::expr_vector f_args = pred.get_pars(); // predicate parameters, formal parameters
                         z3::expr_vector a_args(z3_ctx()); // actual parameters
 
                         // init formla parameters and actual parameters
-                        for (int i=0; i<atom.num_args(); i++) {
-                                a_args.push_back(atom.arg(i));
+                        for (int j=0; j<atom.num_args(); j++) {
+                                a_args.push_back(atom.arg(j));
                         }
 
                         z3::expr_vector x_h(z3_ctx());
@@ -537,7 +527,7 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                                 std::string name = x_h[j].to_string();
                                 name = name.replace(name.find(":"), 1, "");
                                 name = name.replace(name.find(" "), 1, "_");
-                                std::string ss =  name.substr(1, name.length()-2);
+                                std::string ss = logger().string_format("%s_%s_%d_%d",   name.substr(1, name.length()-2).c_str(), pred_name.c_str(), i, 1);
                                 a_args.push_back(z3_ctx().constant(ss.c_str(), st));
                         }
 
@@ -549,312 +539,93 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
                         logger() << "idx: " << idx << std::endl;
 
                         int node_i = 1;
-                        if (idx != -1) {
-                                pto = pto.substitute(f_args, a_args);
+                        pto = pto.substitute(f_args, a_args);
 
-                                std::string source_str = "";
-                                std::string prev_str = "";
-                                std::string next_str = "";
-                                z3::expr source = pto.arg(0);
-                                z3::expr source_interp = get_interp(m, source);
-                                source_str = source_interp.to_string();
+                        std::string node_name = "";
 
-                                prev_str = get_interp(m, atom.arg(1)).to_string();
-
-                                std::string node_name = "";
-
-                                z3::solver sol(z3_ctx());
-                                sol.add(z3_ctx().bool_val(true));
-                                sol.check();
-                                z3::model data_m = sol.get_model();
-
-                                z3::expr data_eval = data;
-
-                                while(node_i <= k) {
-                                        // std::cout << "pto: " << pto << std::endl;
-                                        // node_1
-                                        if (node_i == 1) {
-                                                // E ->
-                                                node_name = logger().string_format("\"node_%s\"", source_str.c_str());
-                                                node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i,  source_str.c_str());
-                                                z3::expr sref = pto.arg(1);
-                                                for (int j=0; j<sref.num_args(); j++) {
-                                                        z3::expr ref = sref.arg(j);
-                                                        z3::expr dest = ref.arg(1);
-                                                        z3::expr dest_interp = get_interp(m, dest);
-                                                        std::string flag_str = "";
-                                                        if (ref.arg(0).to_string() == "prev") {
-                                                                flag_str = logger().string_format("<f1>prev:%s", prev_str.c_str());
-                                                                if (prev_str != "nil"){
-                                                                        edge_str += logger().string_format("%s:f1->\"node_%s\":f0;\n",  node_name.c_str(), prev_str.c_str());
-                                                                }
-                                                        } else if (ref.arg(0).to_string() == "next") {
-                                                                if (k==1) {
-                                                                        next_str =  get_interp(m, atom.arg(size/2)).to_string();
-                                                                } else if(k == 2){
-                                                                        next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
-                                                                } else {
-                                                                        next_str = logger().string_format("%s_X_1", pred_name.c_str());
-                                                                }
-
-                                                                flag_str = logger().string_format("<f2>next:%s", next_str.c_str());
-                                                                if (next_str != "nil") {
-                                                                        edge_str += logger().string_format("%s:f2->\"node_%s\":f0;\n", node_name.c_str(), next_str.c_str());
-                                                                }
-                                                        } else {
-                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());;
-
-                                                        }
-                                                        node_str += logger().string_format("|%s", flag_str.c_str());
-                                                }
-                                                node_str += "\"];\n";
-
-                                                prev_str = source_str;
-                                                source_str = next_str;
-
-                                                data = data.substitute(f_args, a_args);
-                                                data_eval = m.eval(data);
-                                                rec_app = rec_app.substitute(f_args, a_args);
+                        z3::solver sol(z3_ctx());
+                        sol.add(z3_ctx().bool_val(true));
+                        sol.check();
+                        z3::model data_m = sol.get_model();
+                        z3::expr data_eval = data;
 
 
-                                                // std::cout << "node_str: " << node_str << std::endl;
-                                                // std::cout << "edge_str: " << edge_str << std::endl;
-                                                s += node_str + "\n" + edge_str + "\n";
+                        while(node_i <= k) {
+                                // node_1
+                                z3::expr plfld_interp(z3_ctx());
 
-                                        } else {
-
-                                                node_str = "";
-                                                edge_str = "";
-
-                                                // recompute f_args and a_args
-                                                f_args.resize(0);
-                                                for (int j=0; j<a_args.size(); j++) {
-                                                        f_args.push_back(a_args[j]);
-                                                }
-                                                a_args.resize(0);
-                                                for (int j=0; j<rec_app.num_args(); j++) {
-                                                        a_args.push_back(rec_app.arg(j));
-                                                }
-
-                                                for (int j=0; j<x_h.size(); j++) {
-                                                        z3::sort st = x_h[j].get_sort();
-                                                        std::string name = x_h[j].to_string();
-                                                        name = name.replace(name.find(":"), 1, "");
-                                                        name = name.replace(name.find(" "), 1, "_");
-                                                        std::string ss =  logger().string_format("%s_%d",  name.substr(1, name.length()-2).c_str(), node_i);
-                                                        a_args.push_back(z3_ctx().constant(ss.c_str(), st));
-                                                }
-
-                                                // std::cout << "f_args: " << f_args << std::endl;
-                                                // std::cout << "a_args: " << a_args << std::endl;
-
-
-                                                // rec_app = rec_app.substitute(f_args, a_args);
-                                                pto = pto.substitute(f_args, a_args);
-
-                                                // std::cout << "data: " << data << std::endl;
-                                                // std::cout << "rec_app: " << rec_app << std::endl;
-
-
-                                                sol.reset();
-                                                sol.add(data_eval);
-                                                sol.check();
-                                                data_m = sol.get_model();
-
-                                                node_name = logger().string_format("\"node_%s\"", source_str.c_str());
-                                                node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i, source_str.c_str());
-                                                z3::expr sref = pto.arg(1);
-                                                for (int j=0; j<sref.num_args(); j++) {
-                                                        z3::expr ref = sref.arg(j);
-                                                        z3::expr dest = ref.arg(1);
-                                                        z3::expr dest_interp = get_interp(data_m, dest);
-                                                        std::string flag_str = "";
-                                                        if (ref.arg(0).to_string() == "prev") {
-                                                                flag_str = logger().string_format("<f1>prev:(%s)", prev_str.c_str());
-                                                                if (prev_str != "nil"){
-                                                                        edge_str += logger().string_format("%s:f1->\"node_%s\":f0;\n",  node_name.c_str(), prev_str.c_str());
-                                                                }
-                                                        } else if (ref.arg(0).to_string() == "next") {
-                                                                if (k==node_i) {
-                                                                        next_str =  get_interp(m, atom.arg(size/2)).to_string();
-                                                                } else if(k-1 == node_i){
-                                                                        next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
-                                                                } else {
-                                                                        next_str = logger().string_format("%s_X_%d", pred_name.c_str(), node_i);
-                                                                }
-
-                                                                flag_str = logger().string_format("<f2>next:(%s)", next_str.c_str());
-                                                                if (next_str != "nil") {
-                                                                        edge_str += logger().string_format("%s:f2->\"node_%s\":f0;\n", node_name.c_str(), next_str.c_str());
-                                                                }
-                                                        } else {
-                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());;
-                                                        }
-                                                        node_str += logger().string_format("|%s", flag_str.c_str());
-                                                }
-                                                node_str += "\"];\n";
-
-                                                prev_str = source_str;
-                                                source_str = next_str;
-
-                                                data = data.substitute(f_args, a_args);
-                                                data_eval = data_m.eval(data);
-                                                rec_app = rec_app.substitute(f_args, a_args);
-
-                                                // std::cout << "node_str: " << node_str << std::endl;
-                                                // std::cout << "edge_str: " << edge_str << std::endl;
-                                                s += node_str + "\n" + edge_str + "\n";
-                                        }
-                                        node_i ++;
+                                if (node_i == k) {
+                                        plfld_interp = get_interp(m, a_args[size/2]);
+                                } else if(node_i==k-1 && idx != -1){
+                                        plfld_interp = get_interp(m, a_args[size/2+1]);
                                 }
-                                // dll
 
-                        } else {
-                                pto = pto.substitute(f_args, a_args);
+                                if (node_i == 1) {
+                                        // E ->
+                                        write_pred_pto(m, data_m, pto, i, n, plfld_interp, plfld, node_i, k, node_str, edge_str);
 
-                                std::string source_str = "";
-                                std::string prev_str = "";
-                                std::string next_str = "";
-                                z3::expr source = pto.arg(0);
-                                z3::expr source_interp = get_interp(m, source);
-                                source_str = source_interp.to_string();
+                                        // std::cout << "node_str: " << node_str << std::endl;
+                                        // std::cout << "edge_str: " << edge_str << std::endl;
+                                        s += node_str + "\n" + edge_str + "\n";
 
-                                prev_str = get_interp(m, atom.arg(1)).to_string();
+                                } else {
+                                        node_str = "";
+                                        edge_str = "";
 
-                                std::string node_name = "";
-
-                                z3::solver sol(z3_ctx());
-                                sol.add(z3_ctx().bool_val(true));
-                                sol.check();
-                                z3::model data_m = sol.get_model();
-
-                                z3::expr data_eval = data;
-
-                                while(node_i <= k) {
-                                        // std::cout << "pto: " << pto << std::endl;
-                                        // node_1
-                                        if (node_i == 1) {
-                                                // E ->
-                                                node_name = logger().string_format("\"node_%s\"", source_str.c_str());
-                                                node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i,  source_str.c_str());
-                                                z3::expr sref = pto.arg(1);
-                                                for (int j=0; j<sref.num_args(); j++) {
-                                                        z3::expr ref = sref.arg(j);
-                                                        z3::expr dest = ref.arg(1);
-                                                        z3::expr dest_interp = get_interp(m, dest);
-                                                        std::string flag_str = "";
-                                                        if (ref.arg(0).to_string() == "next") {
-                                                                if (k==1) {
-                                                                        next_str =  get_interp(m, atom.arg(size/2)).to_string();
-                                                                } else if(k == 2){
-                                                                        next_str =  get_interp(m, atom.arg(size/2+1)).to_string();
-                                                                } else {
-                                                                        next_str = logger().string_format("%s_X_1", pred_name.c_str());
-
-                                                                }
-
-                                                                flag_str = logger().string_format("<f2>next:%s", next_str.c_str());
-                                                                if (next_str != "nil") {
-                                                                        edge_str += logger().string_format("%s:f2->\"node_%s\":f0;\n", node_name.c_str(), next_str.c_str());
-                                                                }
-                                                        } else {
-                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());;
-
-                                                        }
-                                                        node_str += logger().string_format("|%s", flag_str.c_str());
-                                                }
-                                                node_str += "\"];\n";
-
-                                                source_str = next_str;
-
-                                                data = data.substitute(f_args, a_args);
-                                                data_eval = m.eval(data);
-                                                rec_app = rec_app.substitute(f_args, a_args);
-
-
-                                                // std::cout << "node_str: " << node_str << std::endl;
-                                                // std::cout << "edge_str: " << edge_str << std::endl;
-                                                s += node_str + "\n" + edge_str + "\n";
-
-
-
-                                        } else {
-
-                                                node_str = "";
-                                                edge_str = "";
-
-
-                                                // recompute f_args and a_args
-                                                f_args.resize(0);
-                                                for (int j=0; j<a_args.size(); j++) {
-                                                        f_args.push_back(a_args[j]);
-                                                }
-                                                a_args.resize(0);
-                                                for (int j=0; j<rec_app.num_args(); j++) {
-                                                        a_args.push_back(rec_app.arg(j));
-                                                }
-
-                                                for (int j=0; j<x_h.size(); j++) {
-                                                        z3::sort st = x_h[j].get_sort();
-                                                        std::string name = x_h[j].to_string();
-                                                        name = name.replace(name.find(":"), 1, "");
-                                                        name = name.replace(name.find(" "), 1, "_");
-                                                        std::string ss =  logger().string_format("%s_%d",  name.substr(1, name.length()-2).c_str(), node_i);
-                                                        a_args.push_back(z3_ctx().constant(ss.c_str(), st));
-                                                }
-
-
-                                                // rec_app = rec_app.substitute(f_args, a_args);
-                                                pto = pto.substitute(f_args, a_args);
-
-                                                sol.reset();
-                                                sol.add(data_eval);
-                                                sol.check();
-                                                data_m = sol.get_model();
-
-                                                node_name = logger().string_format("\"node_%s\"", source_str.c_str());
-                                                node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i, source_str.c_str());
-                                                z3::expr sref = pto.arg(1);
-                                                for (int j=0; j<sref.num_args(); j++) {
-                                                        z3::expr ref = sref.arg(j);
-                                                        z3::expr dest = ref.arg(1);
-                                                        z3::expr dest_interp = get_interp(data_m, dest);
-                                                        std::string flag_str = "";
-                                                        if (ref.arg(0).to_string() == "next") {
-                                                                if (k==node_i) {
-                                                                        next_str =  get_interp(m, atom.arg(size/2)).to_string();
-                                                                } else {
-                                                                        next_str = logger().string_format("%s_X_%d", pred_name.c_str(), node_i);
-                                                                }
-
-                                                                flag_str = logger().string_format("<f2>next:(%s)", next_str.c_str());
-                                                                if (next_str != "nil") {
-                                                                        edge_str += logger().string_format("%s:f2->\"node_%s\":f0;\n", node_name.c_str(), next_str.c_str());
-                                                                }
-                                                        } else {
-                                                                flag_str =  logger().string_format("<f3>data:(%s)", dest_interp.to_string().c_str());
-                                                        }
-                                                        node_str += logger().string_format("|%s", flag_str.c_str());
-                                                }
-                                                node_str += "\"];\n";
-
-                                                source_str = next_str;
-
-                                                data = data.substitute(f_args, a_args);
-                                                data_eval = data_m.eval(data);
-                                                rec_app = rec_app.substitute(f_args, a_args);
-
-                                                // std::cout << "node_str: " << node_str << std::endl;
-                                                // std::cout << "edge_str: " << edge_str << std::endl;
-                                                s += node_str + "\n" + edge_str + "\n";
-
+                                        // recompute f_args and a_args
+                                        f_args.resize(0);
+                                        for (int j=0; j<a_args.size(); j++) {
+                                                f_args.push_back(a_args[j]);
                                         }
-                                        node_i ++;
+                                        a_args.resize(0);
+                                        for (int j=0; j<rec_app.num_args(); j++) {
+                                                a_args.push_back(rec_app.arg(j));
+                                        }
+
+                                        for (int j=0; j<x_h.size(); j++) {
+                                                z3::sort st = x_h[j].get_sort();
+                                                std::string name = x_h[j].to_string();
+                                                name = name.replace(name.find(":"), 1, "");
+                                                name = name.replace(name.find(" "), 1, "_");
+                                                std::string ss =  logger().string_format("%s_%s_%d_%d",  name.substr(1, name.length()-2).c_str(), pred_name.c_str(), i, node_i);
+                                                a_args.push_back(z3_ctx().constant(ss.c_str(), st));
+                                        }
+
+                                        // std::cout << "f_args: " << f_args << std::endl;
+                                        // std::cout << "a_args: " << a_args << std::endl;
+
+                                        pto = pto.substitute(f_args, a_args);
+
+                                        sol.reset();
+                                        sol.add(data_eval);
+                                        sol.check();
+                                        data_m = sol.get_model();
+
+                                        if (node_i == k && idx!=-1) {
+                                                z3::expr_vector args1(z3_ctx());
+                                                args1.push_back(pto.arg(0));
+                                                z3::expr_vector args2(z3_ctx());
+                                                args2.push_back(a_args[size/2+1]);
+                                                pto = pto.substitute(args1, args2);
+                                        }
+
+                                        // std::cout << "pto: " << pto << std::endl;
+                                        // std::cout << "data: " << data << std::endl;
+                                        // std::cout << "rec_app: " << rec_app << std::endl;
+                                        write_pred_pto(m, data_m, pto, i, n, plfld_interp, plfld, node_i, k, node_str, edge_str);
+
+                                        // std::cout << "node_str: " << node_str << std::endl;
+                                        // std::cout << "edge_str: " << edge_str << std::endl;
+                                        s += node_str + "\n" + edge_str + "\n";
                                 }
+                                data = data.substitute(f_args, a_args);
+                                data_eval = m.eval(data);
+                                rec_app = rec_app.substitute(f_args, a_args);
+
+                                node_i ++;
                         }
                 }
         }
-        // std::cout << "atom_str: " << s << std::endl;
         return s;
 }
 
@@ -867,6 +638,8 @@ std::string listsolver::get_model_of_atom(z3::model &m, z3::expr &atom, int i, i
  */
 bool listsolver::is_allocated(z3::model &m, z3::expr &source, int n) {
         if (source.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+                if (source.to_string().find("var_") == 0) return true;
+
                 for (int i=0; i<n; i++) {
                         std::string source_name = logger().string_format("[%s,%d]", source.to_string().c_str(), i);
                         z3::expr source_bool = z3_ctx().bool_const(source_name.c_str());
@@ -879,24 +652,91 @@ bool listsolver::is_allocated(z3::model &m, z3::expr &source, int n) {
         return false;
 }
 
-std::string listsolver::get_str_field(z3::model &m, z3::expr &ref, std::string& node_name, int n, std::string& edge_str) {
-        std::string flag_str = "";
-        z3::expr dest = ref.arg(1);
-        z3::expr dest_interp = get_interp(m, dest);
-        if (ref.arg(0).to_string() == "prev") {
-                flag_str = "<f1>prev";
-                if (is_allocated(m, dest, n)) {
-                        edge_str = logger().string_format("%s%s:f1->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), dest_interp.to_string().c_str());
-                }
-        } else if (ref.arg(0).to_string() == "next") {
-                flag_str = "<f2>next";
-                if (is_allocated(m, dest, n)) {
-                        edge_str = logger().string_format("%s%s:f2->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), dest_interp.to_string().c_str());
+/**
+ * translate pto into dot_str
+ * @param m : the model of abstraction
+ * @param pto : the pto atom
+ * @param n : the atom num
+ * @param node_str the output
+ * @param edge_str the output
+ */
+void listsolver::write_pto(z3::model& m, z3::expr& pto, int i, int n, std::string& node_str, std::string& edge_str) {
+        z3::expr source = pto.arg(0);
+        z3::expr source_interp = get_interp(m, source);
+        std::string node_name = logger().string_format("\"node_%s\"", source_interp.to_string().c_str());
+        node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i, source_interp.to_string().c_str());
+
+        z3::expr sref = pto.arg(1);
+        if (sref.decl().name().str() == "sref") {
+                for (int j=0; j<sref.num_args(); j++) {
+                        z3::expr ref = sref.arg(j);
+                        std::string flag_str = "";
+                        z3::expr dest = ref.arg(1);
+                        z3::expr dest_interp = get_interp(m, dest);
+
+
+                        flag_str = logger().string_format("<f%d>%s", (j+1), ref.arg(0).to_string().c_str());
+
+                        if (is_allocated(m, dest, n)) {
+                                edge_str = logger().string_format("%s%s:f%d->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), (j+1), dest_interp.to_string().c_str());
+                        }
+
+                        node_str +=  logger().string_format("|%s:(%s)",  flag_str.c_str(),  dest_interp.to_string().c_str());
                 }
         } else {
-                flag_str = "<f3>data";
+                std::string flag_str = "";
+                z3::expr dest = sref.arg(1);
+                z3::expr dest_interp = get_interp(m, dest);
+                flag_str = logger().string_format("<f%d>%s", 1, sref.arg(0).to_string().c_str());
+
+                if (is_allocated(m, dest, n)) {
+                        edge_str = logger().string_format("%s%s:f%d->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), 1, dest_interp.to_string().c_str());
+                }
+
+                node_str +=  logger().string_format("|%s:(%s)",  flag_str.c_str(),  dest_interp.to_string().c_str());
         }
+        node_str += "\"];\n";
+}
 
+/**
+ * translate pred_pto into dot_str
+ * @param m : the model of abstraction
+ * @param pto : the pto atom
+ * @param n : the atom num
+ * @param plfld_interp : plfld_interp (the last two)
+ * @param plfld : plfld
+ * @param node_i : node_i times
+ * @param k : the predicate times
+ * @param node_str the output
+ * @param edge_str the output
+ */
+void listsolver::write_pred_pto(z3::model& m, z3::model& data_m, z3::expr& pto, int i, int n, z3::expr& plfld_interp, z3::expr& plfld, int node_i, int k, std::string& node_str, std::string& edge_str) {
+        z3::expr source = pto.arg(0);
+        z3::expr source_interp = get_interp(m, source);
+        std::string node_name = logger().string_format("\"node_%s\"",  source_interp.to_string().c_str());
+        node_str = logger().string_format("%s [label=\"atom_%d|<f0>(%s)", node_name.c_str(), i,  source_interp.to_string().c_str());
+        z3::expr sref = pto.arg(1);
+        for (int j=0; j<sref.num_args(); j++) {
+                z3::expr ref = sref.arg(j);
+                std::string flag_str = "";
+                z3::expr dest = ref.arg(1);
+                z3::expr dest_interp = get_interp(m, dest);
 
-        return logger().string_format("|%s:(%s)",  flag_str.c_str(),  dest_interp.to_string().c_str());
+                if (dest.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+                        if (plfld.to_string() == ref.arg(0).to_string() && Z3_ast(plfld_interp)!=0) {
+                                dest_interp = plfld_interp;
+                        }
+                } else {
+                        dest_interp = get_interp(data_m, dest);
+                }
+
+                flag_str = logger().string_format("<f%d>%s", (j+1), ref.arg(0).to_string().c_str());
+
+                if (is_allocated(m, dest, n) && dest_interp.to_string()!="nil") {
+                        edge_str = logger().string_format("%s%s:f%d->\"node_%s\":f0;\n", edge_str.c_str(), node_name.c_str(), (j+1), dest_interp.to_string().c_str());
+                }
+
+                node_str +=  logger().string_format("|%s:(%s)",  flag_str.c_str(),  dest_interp.to_string().c_str());
+        }
+        node_str += "\"];\n";
 }

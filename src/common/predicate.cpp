@@ -50,3 +50,24 @@ int predicate::idx_E_gamma() {
         }
         return -1;
 }
+
+z3::expr predicate::get_plfld() {
+        if (is_list()) {
+                z3::expr pto = m_rec_rules[0].get_pto();
+                z3::expr rec_app_source = m_rec_rules[0].get_rec_apps()[0].arg(0);
+                 z3::expr sref = pto.arg(1);
+                if (sref.decl().name().str() == "sref") {
+                        for (int j=0; j<sref.num_args(); j++) {
+                                z3::expr ref = sref.arg(j);
+                                z3::expr dest = ref.arg(1);
+                                if (dest.hash() == rec_app_source.hash()) {
+                                        return ref.arg(0);
+                                }
+                        }
+                } else {
+                        return sref.arg(0);
+
+                }
+        }
+        return m_pars[0];
+}
