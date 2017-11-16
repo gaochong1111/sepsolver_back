@@ -123,8 +123,6 @@
 (declare-fun y4() Int)
 (declare-fun y5() Int)
 
-(declare-fun alpha0() SetLoc)
-(declare-fun alpha1() SetLoc)
 
 (assert
 	(and
@@ -134,13 +132,13 @@
 		;(= E4 E3)
 		;(>= n1 (+ n2 5))
 		(tobool
-		(ssep   (index alpha0 (ldllseg E1 F1 x1 E3 F3 x3)) 
-			(index alpha0 (ldllseg E2 F2 x2 E4 F4 x4))
-			(index alpha0 (ldllseg E3 F3 x3 E4 F4 x4))
-			(index alpha0 (ldllseg E4 F4 y4 E3 F3 y3))
-			(index alpha0 (ldllseg E3 F3 x3 E5 F5 x5))
-			(index alpha0 (ldllseg E5 F5 y5 E3 F3 y3))
-			(index alpha0 (ldllseg E4 F4 x5 E6 F6 x6))
+		(ssep   (ldllseg E1 F1 x1 E3 F3 x3)
+				 (ldllseg E2 F2 x2 E4 F4 x4)
+			 (ldllseg E3 F3 x3 E4 F4 x4)
+			 (ldllseg E4 F4 y4 E3 F3 y3)
+			 (ldllseg E3 F3 x3 E5 F5 x5)
+			 (ldllseg E5 F5 y5 E3 F3 y3)
+			 (ldllseg E4 F4 x5 E6 F6 x6)
 		) 
 		)
 	)
@@ -152,8 +150,8 @@
 		(and
 			;(distinct E1 E3)
 			(tobool
-				(ssep (index alpha0 (dllseg E1 F1 E3 F3))
-					(index alpha1 (dllseg E2 F2 E6 F6))
+				(ssep  (dllseg E1 F1 E3 F3)
+					   (dllseg E2 F2 E6 F6)
 				)
 			)
 		)

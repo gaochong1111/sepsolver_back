@@ -177,7 +177,8 @@ int solver::index_of_pred(std::string &pred_name) {
 z3::expr solver::abs_space(z3::expr &space) {
         // 1.space atoms -> abs (\phi_sigma)
         z3::expr f_abs(z3_ctx());
-        for (int i=0; i<space.num_args(); i++) {
+        if (space.is_app() && space.decl().name().str() == "ssep") {
+            for (int i=0; i<space.num_args(); i++) {
                 //1.1 fetch atom
                 z3::expr atom = space.arg(i);
 
@@ -185,11 +186,17 @@ z3::expr solver::abs_space(z3::expr &space) {
 
                 // 1.5 add atom_f to f_abs
                 if (Z3_ast(f_abs) == 0) {
-                        f_abs = atom_f;
+                    f_abs = atom_f;
                 } else {
-                        f_abs = f_abs && atom_f;
+                    f_abs = f_abs && atom_f;
                 }
+            }
+        } else {
+
+            z3::expr atom_f = pred2abs(space, 0);
+            f_abs = atom_f;
         }
+
         return f_abs;
 }
 

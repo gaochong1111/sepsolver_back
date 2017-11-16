@@ -38,18 +38,18 @@
 (declare-fun y_emp () Dll_t)
 (declare-fun z_emp () Dll_t)
 
-;(declare-fun n1 () Int)
-;(declare-fun n2 () Int)
+(declare-fun n1 () Int)
+(declare-fun n2 () Int)
 
 
 
-;; declare set of locations
-
-(declare-fun alpha0 () SetLoc)
 
 (assert 
-	(and ;(distinct x_emp z_emp) (distinct w_emp z_emp) (distinct y_emp z_emp) 
-	;(> n1 (+ n2 1))
+	(and
+		(distinct x_emp z_emp)
+		(distinct w_emp z_emp)
+		(distinct y_emp z_emp)
+		(> n1 (+ n2 1))
 	(tobool 
 	(ssep 
 		(pto x_emp (sref (ref next w_emp) (ref prev nil) ) ) 
@@ -65,9 +65,8 @@
 
 (assert (not 
 	(tobool 
-		(index alpha0 (dll x_emp nil z_emp y_emp )) 
+	 		(dll x_emp nil z_emp y_emp )
 	)
-
 ))
 
 (check-sat)

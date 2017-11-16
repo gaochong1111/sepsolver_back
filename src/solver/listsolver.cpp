@@ -26,8 +26,14 @@ z3::check_result listsolver::check_sat() {
         logger() << "list sat problem: " << std::endl;
         // 1.1 compute all phi_pd
         compute_all_data_closure();
-        // std::cout << "compute closure is over.\n";
         z3::expr formula = m_ctx.get_negf();
+        z3::expr f_abs = get_abstraction(formula);
+        s.add(f_abs);
+        z3::check_result result = s.check();
+        return result;
+}
+
+z3::expr listsolver::get_abstraction(z3::expr &formula) {
         logger() << "formula: " << formula << std::endl;
         // 1.2 formula -> (delta \and sigma)
         z3::expr data(z3_ctx());
@@ -35,24 +41,16 @@ z3::check_result listsolver::check_sat() {
         get_data_space(formula, data, space);
         z3::expr f_abs = data;
 
-        logger() << "data: " << data << std::endl;
-        logger() << "space: " << space << std::endl;
+        // logger() << "data: " << data << std::endl;
+        // logger() << "space: " << space << std::endl;
 
         // 1.3 space part
         f_abs = f_abs && abs_space(space);
 
         // 1.4 sep (\phi_star)
         f_abs = f_abs && abs_phi_star();
-        logger() << "f_abs: " << f_abs << std::endl;
-        // f_abs = z3_ctx().bool_val(true);
-        // 1.5 solve
-        // z3::solver s(z3_ctx());
-        s.add(f_abs);
-        z3::check_result result = s.check();
-        // std::cout << "result: " << result << std::endl;
-
-        // std::cout << "get model: " << s.get_model() << std::endl;
-        return result;
+        // logger() << "f_abs: " << f_abs << std::endl;
+        return f_abs;
 }
 
 /**
@@ -63,11 +61,162 @@ z3::check_result listsolver::check_sat() {
 z3::check_result listsolver::check_entl() {
         // TODO ....
         logger() << "list entl problem:\n";
-        z3::solver s(z3_ctx());
+        z3::solver ss(z3_ctx());
         z3::expr f_abs = z3_ctx().bool_val(true);
-        s.add(f_abs);
-        z3::check_result result = s.check();
+        ss.add(f_abs);
+        z3::check_result result = ss.check();
+
+        assert(m_ctx.pred_size() == 1);
+
+        // 1.1 compute all phi_pd
+        compute_all_data_closure();
+
+        // \varphi
+        z3::expr phi = m_ctx.get_negf();
+        // \psi
+        z3::expr psi = m_ctx.get_posf().arg(0);
+
+        logger() << "phi: " << phi << std::endl;
+        logger() << "psi: " << psi << std::endl;
+
+        // 1. const_set, lconst_set
+        std::set<z3::expr, exprcomp> phi_const_set;
+        expr_tool::get_consts(phi, phi_const_set);
+
+
+
+        std::set<z3::expr, exprcomp> psi_const_set;
+        expr_tool::get_consts(psi, psi_const_set);
+
+        // 1.1 check var subset
+
+        logger() << "psi_const_set is subset of phi_const_set: " << expr_tool::is_sub_set(psi_const_set, phi_const_set) << std::endl;
+
+        // 1.2 check sat
+        z3::expr phi_abs = get_abstraction(phi);
+        ss.reset();
+        ss.add(phi_abs);
+        z3::check_result phi_res = ss.check();
+        logger() << "phi sat res: " << phi_res << std::endl;
+
+        z3::expr psi_abs = get_abstraction(psi);
+
+        ss.reset();
+        ss.add(psi_abs);
+        z3::check_result psi_res = ss.check();
+        logger() << "psi sat res: " << psi_res << std::endl;
+
+        // 1.3 equivalence
+        std::set<z3::expr, exprcomp> phi_lconst_set;
+        expr_tool::get_lconsts(phi, phi_lconst_set);
+        std::vector<z3::expr> phi_lconst_vec;
+        expr_tool::expr_set_to_vec(phi_lconst_set, phi_lconst_vec);
+
+        std::vector<std::set<int> > eq_class_vec;
+
+        get_eq_class(phi_abs, phi_lconst_vec, eq_class_vec);
+
+        logger() << "size of eq_class_vec: " << eq_class_vec.size() << std::endl;
+        // 1.4 construct graph
+        z3::expr phi_space(z3_ctx());
+        z3::expr phi_data(z3_ctx());
+        get_data_space(phi, phi_data, phi_space);
+
+        std::vector<std::pair<std::pair<int, int>, int> > edge_vec;
+
+        if (phi_space.decl().name().str() == "ssep") {
+                for (int i=0; i<phi_space.num_args(); i++) {
+                        std::pair<std::pair<int, int>, int> edge;
+                        edge.second = i;
+                        z3::expr atom = phi_space.arg(i);
+                        get_edge_from_atom(atom, phi_lconst_vec, edge);
+                        edge_vec.push_back(edge);
+                }
+        } else {
+                // one atom
+                std::pair<std::pair<int, int>, int> edge;
+                edge.second = 0;
+                get_edge_from_atom(phi_space, phi_lconst_vec, edge);
+                edge_vec.push_back(edge);
+        }
+
+        logger() << "size of edge_vec: " << edge_vec.size() << std::endl;
+        graph g;
+        g.init(eq_class_vec, edge_vec);
+        g.print();
+
         return result;
+}
+
+void listsolver::get_edge_from_atom(z3::expr &atom, std::vector<z3::expr> &lconsts, std::pair<std::pair<int, int>, int> &edge) {
+        predicate pred = m_ctx.get_pred(0);
+        z3::expr plfld = pred.get_plfld();
+        int size = pred.get_pars().size() - pred.size_of_static_parameters();
+        z3::expr source(z3_ctx());
+        z3::expr dest(z3_ctx());
+
+        if (atom.decl().name().str()=="pto") {
+                source = atom.arg(0);
+                z3::expr sref = atom.arg(1);
+                if (sref.decl().name().str() == "sref") {
+                        for (int i=0; i<sref.num_args(); i++) {
+                                if (sref.arg(i).arg(0).to_string() == plfld.to_string()) {
+                                        dest = sref.arg(i).arg(1);
+                                        break;
+                                }
+                        }
+                } else {
+                        dest = sref.arg(1);
+                }
+        } else {
+                source = atom.arg(0);
+                dest = atom.arg(size/2);
+        }
+        edge.first.first = expr_tool::index_of_exp(source, lconsts);
+        edge.first.second = expr_tool::index_of_exp(dest, lconsts);
+}
+
+/**
+ * get equivalence class
+ * @param: phi_abs : the abstraction of phi
+ * @param: lconsts : the location vars
+ * @param: eq_class_vec : the output
+ */
+void listsolver::get_eq_class(z3::expr &phi_abs, std::vector<z3::expr> &lconsts, std::vector<std::set<int> > &eq_class_vec) {
+        std::set<int> eq_class;
+        z3::solver sol(z3_ctx());
+        std::vector<int> lconst_class(lconsts.size(), -1);
+        for (int i=0; i<lconsts.size(); i++) {
+                for (int j=i+1; j<lconsts.size(); j++) {
+                        z3::expr X = z3_ctx().int_const(lconsts[i].to_string().c_str()) ;
+                        z3::expr Y =  z3_ctx().int_const(lconsts[j].to_string().c_str());
+                        z3::expr formula = phi_abs && (X!=Y);
+                        sol.reset();
+                        sol.add(formula);
+                        if(sol.check() == z3::unsat) {
+                                // X == Y
+                                if (lconst_class[i] != -1) {
+                                        lconst_class[j] = lconst_class[i];
+                                        eq_class_vec[lconst_class[i]].insert(j);
+                                } else {
+                                        lconst_class[i] = eq_class_vec.size();
+                                        lconst_class[j] = lconst_class[i];
+                                        eq_class.clear();
+                                        eq_class.insert(i);
+                                        eq_class.insert(j);
+                                        eq_class_vec.push_back(eq_class);
+                                }
+                        }
+                }
+        }
+
+        for (int i=0; i<lconsts.size(); i++) {
+                if (lconst_class[i] == -1) {
+                        eq_class.clear();
+                        eq_class.insert(i);
+                        eq_class_vec.push_back(eq_class);
+                }
+        }
 }
 
 /**

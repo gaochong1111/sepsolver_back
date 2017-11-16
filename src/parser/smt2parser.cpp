@@ -479,9 +479,12 @@ z3::expr smt2parser::make_ref(z3::expr_vector& args) {
         z3::sort target_sort = field_sort.array_range();
 
         z3::expr target = args[1];
-        target.get_sort().is_arith();
-        target.is_arith();
+        // target.get_sort().is_arith();
+        // target.is_arith();
 
+        if (target.to_string() == "nil") {
+                target = z3_ctx().constant("nil", target_sort);
+        }
 
         if ((!target.get_sort().is_arith() || !target.is_arith()) && (target.get_sort().name() != target_sort.name())) {
                 std::string info =  logger().string_format("invalid s-expression, field '%s' for sort '%s' expected point to sort '%s'", field.to_string().c_str(), source_sys.str().c_str(), target_sort.to_string().c_str());

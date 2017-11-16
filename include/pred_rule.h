@@ -7,16 +7,7 @@
 #include <set>
 #include <vector>
 
-
-/**
- * the expr comparator
- */
-class exprcomp {
-public:
-        bool operator() (const z3::expr& lhs, const z3::expr& rhs) const {
-                return lhs.hash() < rhs.hash();
-        }
-};
+#include "expr_tool.h"
 
 
 /**
@@ -29,7 +20,7 @@ private:
         z3::expr m_data;
         z3::expr m_pto;
         z3::expr_vector m_rec_apps;
-        void get_x_h(z3::expr exp, std::set<z3::expr, exprcomp>& x_h);
+        // void get_x_h(z3::expr exp, std::set<z3::expr, exprcomp>& x_h);
 
 public:
 pred_rule(z3::expr data, z3::expr pto, z3::expr_vector rec_apps)
