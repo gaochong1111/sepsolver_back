@@ -11,8 +11,11 @@ private:
         // check sat
         z3::expr get_abstraction(z3::expr& formula);
         // check entl
+        void construct_graph(z3::expr& phi_abs, std::vector<z3::expr>& lconsts, z3::expr& space, graph& g);
         void get_eq_class(z3::expr& phi_abs, std::vector<z3::expr>& lconsts, std::vector<std::set<int> >& eq_class_vec);
         void get_edge_from_atom(z3::expr& atom, std::vector<z3::expr>& lconsts, std::pair<std::pair<int, int>, int>& edge);
+        bool get_next_omega(std::vector<int>& curr, std::vector<int>& target);
+        void get_omega_phi_abs(z3::expr& phi_abs, graph& g, std::vector<int>& omega, z3::expr& space, z3::expr& omega_phi_abs);
 
         // data_closure
         void compute_all_data_closure();

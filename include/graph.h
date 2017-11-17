@@ -5,6 +5,7 @@
 #include <set>
 #include <map>
 #include <utility>
+#include <z3++.h>
 
 #include <boost/config.hpp>
 #include <boost/utility.hpp>
@@ -32,6 +33,8 @@ public:
 	typedef boost::graph_traits<adjacency_list>::edge_descriptor edge_descriptor;
 	typedef boost::graph_traits<adjacency_list>::edge_iterator edge_iterator;
 	typedef adjacency_list::out_edge_iterator out_edge_iterator;
+
+	typedef boost::graph_traits<adjacency_list>::vertex_iterator vertex_iterator;
 
 	graph() = default;
 	graph(const graph&);
@@ -75,6 +78,7 @@ public:
 	void print_cc(std::vector<cc_t>&);
 
 	void print();
+	void print(std::vector<z3::expr>& lconsts, z3::expr& space, std::string file_name="graph.dot");
 	void print_cc();
 	void print_cyc();
 

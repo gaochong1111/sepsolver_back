@@ -60,7 +60,9 @@
 
 
 ;; phi
-(assert (tobool
+(assert (and
+        ;; (= E3 E5)
+    (tobool
         (ssep
             (ldllseg E1 E1_prime x1 E3 E3_prime x3)
             (ldllseg E2 E2_prime x2 E4 E4_prime x4)
@@ -70,6 +72,7 @@
             (ldllseg E5 E5_prime x5_prime E3 E3_prime x3_prime)
             (ldllseg E4 E4_prime x4 E6 E6_prime x6)
         ))
+        )
 )
 
 ;; psi

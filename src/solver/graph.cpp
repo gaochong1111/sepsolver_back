@@ -48,6 +48,7 @@ graph& graph::operator=(graph&& g) noexcept
 }
 void graph::init(std::vector<std::set<int> >& eq_class_vec,  std::vector<std::pair<std::pair<int, int>, int> >& edge_vec)
 {
+	adj_list.clear();
 	std::set<int> eq_class;
 	/*create vertex*/
 	for (size_t i = 0; i < eq_class_vec.size(); ++i) {
@@ -75,6 +76,8 @@ void graph::init(std::vector<std::set<int> >& eq_class_vec,  std::vector<std::pa
 	seek_cc();
 	seek_cycle();
 }
+
+
 
 void graph::print_cc(std::vector<cc_t>& cc) {
 	std::cout << "size of cc:" << cc.size() << std::endl;
@@ -120,13 +123,56 @@ void graph::print_cyc() {
 
 }
 
+
+
+
+void graph::print(std::vector<z3::expr>& lconsts, z3::expr& space, std::string file_name) {
+	std::cout << "print graph ----> " << file_name <<std::endl;
+	std::ofstream out(file_name);
+
+	boost::property_map<adjacency_list, boost::vertex_index_t>::type index;
+	std::pair<vertex_iterator, vertex_iterator> vp;
+	adjacency_list::vertex_descriptor v;
+	// size_t num = boost::num_vertices(adj_list);
+	out << "digraph g {\n";
+	for (vp=vertices(adj_list); vp.first!=vp.second; ++vp.first) {
+		v = *vp.first;
+		std::set<int> node = adj_list[v];
+		out << "node_" << index[v] << " [label=\"[";
+		std::set<int>::iterator it=node.begin();
+		if (it != node.end()){
+			out << lconsts[*it];
+			++it;
+		}
+
+		for( ;it!=node.end(); ++it) {
+			out <<", " << lconsts[*it];
+		}
+		out <<"]\"];\n\n";
+	}
+
+	adjacency_list::vertex_descriptor  v1, v2;
+	std::pair<edge_iterator, edge_iterator> ep;
+	edge_iterator ei, ei_end;
+	for (tie(ei, ei_end)=edges(adj_list); ei!=ei_end; ++ei) {
+		v1 = boost::source(*ei, adj_list);
+		v2 = boost::target(*ei, adj_list);
+
+		out << "node_" << index[v1] << "->" << "node_" << index[v2] << "[label=\"";
+		out << space.arg(adj_list[*ei]);
+		out<<"\"];\n";
+	}
+	out << "}\n";
+	out.close();
+}
+
+
 void graph::print() {
 	std::cout << "print graph:\n";
 	std::ofstream out("graph.dot");
 
 	boost::property_map<adjacency_list, boost::vertex_index_t>::type index;
-	typedef boost::graph_traits<adjacency_list>::vertex_iterator vertex_iter;
-	std::pair<vertex_iter, vertex_iter> vp;
+	std::pair<vertex_iterator, vertex_iterator> vp;
 	adjacency_list::vertex_descriptor v;
 	size_t num = boost::num_vertices(adj_list);
 	std::cout << "num of vertices: " << num << std::endl;
@@ -152,9 +198,8 @@ void graph::print() {
 
 
 	adjacency_list::vertex_descriptor  v1, v2;
-	typedef boost::graph_traits<adjacency_list>::edge_iterator edge_iter;
-	std::pair<edge_iter, edge_iter> ep;
-	edge_iter ei, ei_end;
+	std::pair<edge_iterator, edge_iterator> ep;
+	edge_iterator ei, ei_end;
 	for (tie(ei, ei_end)=edges(adj_list); ei!=ei_end; ++ei) {
 		v1 = boost::source(*ei, adj_list);
 		v2 = boost::target(*ei, adj_list);
