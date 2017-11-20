@@ -27,29 +27,34 @@ z3::check_result listsolver::check_sat() {
         // 1.1 compute all phi_pd
         compute_all_data_closure();
         z3::expr formula = m_ctx.get_negf();
-        z3::expr f_abs = get_abstraction(formula);
+        z3::expr_vector f_new_bools(z3_ctx());
+        z3::expr space(z3_ctx());
+        z3::expr f_abs = get_abstraction(formula, space, f_new_bools);
         s.add(f_abs);
         z3::check_result result = s.check();
         return result;
 }
 
-z3::expr listsolver::get_abstraction(z3::expr &formula) {
-        logger() << "formula: " << formula << std::endl;
+/**
+ * get abstraction of formula
+ * @param formula :
+ * @param space : the space part of formula
+ * @param new_bools : aux output new bool vars
+ * @return
+ */
+z3::expr listsolver::get_abstraction(z3::expr &formula, z3::expr& space, z3::expr_vector& new_bools) {
+        logger() << "get abstraction of formula: " << formula << std::endl;
         // 1.2 formula -> (delta \and sigma)
         z3::expr data(z3_ctx());
-        z3::expr space(z3_ctx());
         get_data_space(formula, data, space);
         z3::expr f_abs = data;
 
-        // logger() << "data: " << data << std::endl;
-        // logger() << "space: " << space << std::endl;
-
         // 1.3 space part
-        f_abs = f_abs && abs_space(space);
+        f_abs = f_abs && abs_space(space, new_bools);
 
         // 1.4 sep (\phi_star)
-        f_abs = f_abs && abs_phi_star();
-        // logger() << "f_abs: " << f_abs << std::endl;
+        f_abs = f_abs && abs_phi_star(new_bools);
+
         return f_abs;
 }
 
@@ -66,6 +71,7 @@ z3::check_result listsolver::check_entl() {
         ss.add(f_abs);
         z3::check_result result = ss.check();
 
+        // TO checking
         assert(m_ctx.pred_size() == 1);
 
         // 1.1 compute all phi_pd
@@ -83,8 +89,6 @@ z3::check_result listsolver::check_entl() {
         std::set<z3::expr, exprcomp> phi_const_set;
         expr_tool::get_consts(phi, phi_const_set);
 
-
-
         std::set<z3::expr, exprcomp> psi_const_set;
         expr_tool::get_consts(psi, psi_const_set);
 
@@ -93,30 +97,41 @@ z3::check_result listsolver::check_entl() {
         logger() << "psi_const_set is subset of phi_const_set: " << expr_tool::is_sub_set(psi_const_set, phi_const_set) << std::endl;
 
         // 1.2 check sat
-        z3::expr phi_abs = get_abstraction(phi);
+        z3::expr_vector phi_new_bools(z3_ctx());
+        z3::expr phi_space(z3_ctx());
+        z3::expr phi_abs = get_abstraction(phi, phi_space, phi_new_bools);
         ss.reset();
         ss.add(phi_abs);
         z3::check_result phi_res = ss.check();
         logger() << "phi sat res: " << phi_res << std::endl;
 
-        z3::expr psi_abs = get_abstraction(psi);
-
+        z3::expr_vector psi_new_bools(z3_ctx());
+        z3::expr psi_space(z3_ctx());
+        z3::expr psi_abs = get_abstraction(psi, psi_space, psi_new_bools);
         ss.reset();
         ss.add(psi_abs);
         z3::check_result psi_res = ss.check();
         logger() << "psi sat res: " << psi_res << std::endl;
 
-        // 1.3 equivalence
+        // 1.3 check Abs(\varphi) |= \exists Z. Abs(\psi)
+        z3::expr_vector Z = psi_new_bools;
+        for (int i=0; i<psi_space.num_args(); i++) {
+                std::string k_i_name = logger().string_format("[k,%d]", i);
+                Z.push_back(z3_ctx().int_const(k_i_name.c_str()));
+        }
+        logger() << "Z: " << Z << std::endl;
+        z3::expr phi_abs_entl_psi_abs = phi_abs && (z3::forall(Z, psi_abs));
+        ss.reset();
+        ss.add(phi_abs_entl_psi_abs);
+        z3::check_result pep_res = ss.check();
+        logger() << "\nphi_abs entl forall psi_abs result: " << pep_res << std::endl;
+        if (pep_res == z3::sat) return z3::unsat; // if sat return unsat
+
+        // 1.4 construct graph
         std::set<z3::expr, exprcomp> phi_lconst_set;
         expr_tool::get_lconsts(phi, phi_lconst_set);
         std::vector<z3::expr> phi_lconst_vec;
         expr_tool::expr_set_to_vec(phi_lconst_set, phi_lconst_vec);
-
-        // 1.4 construct graph
-        z3::expr phi_space(z3_ctx());
-        z3::expr phi_data(z3_ctx());
-        get_data_space(phi, phi_data, phi_space);
-
 
         graph g;
 
@@ -151,18 +166,18 @@ z3::check_result listsolver::check_entl() {
                         ss.add(omega_phi_abs_i);
                         // logger() << "omega_phi_abs_i: " << omega_phi_abs_i << std::endl;
                         if (ss.check() == z3::sat) {
-                                // feasible
+                                // feasible allocating plans
                                 construct_graph(omega_phi_abs_i, phi_lconst_vec, phi_space, omega_g_i1);
                                 std::string file_name = logger().string_format("omega_g_%d_%d.dot", i, j);
                                 omega_g_i = omega_g_i1;
                                 omega_g_i.print(phi_lconst_vec, phi_space, file_name);
                         }
                 }
-                // match omega_g_i psi_g
+                // match omega_g_i psi_g TODO...
                 std::cout << "matching \n";
                 omega_g_i = g;
                 omega_phi_abs_i = phi_abs;
-        }while(get_next_omega(omega, cc_cycle_num));
+        } while(get_next_omega(omega, cc_cycle_num));
 
         return result;
 }
@@ -192,7 +207,6 @@ void listsolver::get_omega_phi_abs(z3::expr &phi_abs, graph &g, std::vector<int>
                                 // edge
                                 for (int k=0; k<cycle_size; k++) {
                                         int atom_idx =  g.get_edge_property(cycle[k], cycle[(k+1)%cycle_size]);
-
                                         z3::expr E = space.arg(atom_idx).arg(0);
                                         std::string E_bool_name = logger().string_format("[%s,%d]", E.to_string().c_str(), atom_idx);
                                         z3::expr E_bool = z3_ctx().bool_const(E_bool_name.c_str());
@@ -231,14 +245,6 @@ void listsolver::construct_graph(z3::expr &phi_abs, std::vector<z3::expr> &phi_l
         get_eq_class(phi_abs, phi_lconst_vec, eq_class_vec);
 
         logger() << "size of eq_class_vec: " << eq_class_vec.size() << std::endl;
-
-        for (int i=0; i<eq_class_vec.size(); i++) {
-                std::cout << "eq_"<<i <<": [";
-                for (auto j : eq_class_vec[i]) {
-                        std::cout << j << ", ";
-                }
-                std::cout << "]\n";
-        }
 
         std::vector<std::pair<std::pair<int, int>, int> > edge_vec;
         z3::solver ss(z3_ctx());
@@ -661,12 +667,14 @@ int listsolver::get_numeral(z3::expr x) {
  * atom in formula to abstraction
  * @param  atom [the atom in formula, like p(Z1, mu; Z2, nu, chi) or (pto Z (*))]
  * @param  i    [the index in formula]
+ * @param new_bools [new bool vars]
  * @return      [the abstraction]
  */
-z3::expr listsolver::pred2abs(z3::expr &atom, int i){
+z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools){
         logger() << "listsolver::pred2abs \n";
         logger() << "atom: " << atom << std::endl;
         logger() << "i: " << i << std::endl;
+
         std::string source = atom.arg(0).to_string();
         std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
         // 1 introduce new vars

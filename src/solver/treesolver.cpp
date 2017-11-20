@@ -12,16 +12,17 @@ z3::check_result treesolver::check_sat() {
         compute_all_delta_ge1_p();
         logger() << "tree sat problem: " << std::endl;
         z3::expr formula = m_ctx.get_negf();
+        z3::expr_vector f_new_bools(z3_ctx());
         // 2.2.1 formula -> (delta \and sigma)
         z3::expr data(z3_ctx());
         z3::expr space(z3_ctx());
         get_data_space(formula, data, space);
         z3::expr f_abs = data;
         // 2.2.2 space part
-        f_abs = f_abs && abs_space(space);
+        f_abs = f_abs && abs_space(space, f_new_bools);
 
         // 2.2.3 sep (\phi_star)
-        f_abs = f_abs && abs_phi_star();
+        f_abs = f_abs && abs_phi_star(f_new_bools);
 
         z3::solver s(z3_ctx());
         s.add(f_abs);
@@ -60,7 +61,14 @@ void treesolver::check_preds() {
 
 }
 
-z3::expr treesolver::pred2abs(z3::expr &atom, int i) {
+/**
+ * atom in formula to abstraction
+ * @param  atom [the atom in formula, like p(Z1, mu; Z2, nu, chi) or (pto Z (*))]
+ * @param  i    [the index in formula]
+ * @param new_bools [new bool vars]
+ * @return      [the abstraction]
+ */
+z3::expr treesolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools) {
         std::string source = atom.arg(0).to_string();
         std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
         // 1.2 introduce new boolean var

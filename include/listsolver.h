@@ -6,10 +6,11 @@
 #include "graph.h"
 
 class listsolver :public solver {
+
 private:
 
         // check sat
-        z3::expr get_abstraction(z3::expr& formula);
+        z3::expr get_abstraction(z3::expr& formula, z3::expr& space, z3::expr_vector& new_bools);
         // check entl
         void construct_graph(z3::expr& phi_abs, std::vector<z3::expr>& lconsts, z3::expr& space, graph& g);
         void get_eq_class(z3::expr& phi_abs, std::vector<z3::expr>& lconsts, std::vector<std::set<int> >& eq_class_vec);
@@ -40,7 +41,7 @@ listsolver(smt2context& ctx) : solver(ctx){}
         void check_preds();
         z3::check_result check_sat();
         z3::check_result check_entl();
-        z3::expr pred2abs(z3::expr& atom, int i);
+        z3::expr pred2abs(z3::expr& atom, int i, z3::expr_vector& new_bools);
         std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i, int n);
 };
 

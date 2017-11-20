@@ -149,7 +149,7 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
         }
 
         if (i != formula.num_args()) {
-           space = formula.arg(i);
+            space = formula.arg(i);
         }
     }
 
@@ -176,16 +176,17 @@ int solver::index_of_pred(std::string &pred_name) {
 /**
  * compute abstraction of space part
  * @param space : the space part
+ * @param new_bools : new bools var
  * @return the abstraction of space part
  */
-z3::expr solver::abs_space(z3::expr &space) {
+z3::expr solver::abs_space(z3::expr &space, z3::expr_vector& new_bools) {
     // 1.space atoms -> abs (\phi_sigma)
     z3::expr f_abs(z3_ctx());
     for (int i=0; i<space.num_args(); i++) {
         //1.1 fetch atom
         z3::expr atom = space.arg(i);
 
-        z3::expr atom_f = pred2abs(atom, i);
+        z3::expr atom_f = pred2abs(atom, i, new_bools);
 
         // 1.5 add atom_f to f_abs
         if (Z3_ast(f_abs) == 0) {
@@ -201,10 +202,11 @@ z3::expr solver::abs_space(z3::expr &space) {
 
 /**
  * compute phi_star by new_bools
+ * @param new_bools : new bool vars
  * @return the phi_star
  */
-z3::expr solver::abs_phi_star() {
-    z3::expr phi_star(z3_ctx());
+z3::expr solver::abs_phi_star(z3::expr_vector& new_bools) {
+    z3::expr phi_star = z3_ctx().bool_val(true);
     // phi_star
     for (int i=0; i<new_bools.size(); i++) {
         for (int j=i+1; j<new_bools.size(); j++) {
@@ -220,11 +222,11 @@ z3::expr solver::abs_phi_star() {
             if (z1_i != z2_i) {
                 // add imply atom
                 z3::expr imply = implies((z3_ctx().int_const(z1_name.c_str()) == z3_ctx().int_const(z2_name.c_str()) && new_bools[i]), !new_bools[j]);
-                if (Z3_ast(phi_star) == 0) {
-                    phi_star = imply;
-                } else {
-                    phi_star = phi_star && imply;
-                }
+                // if (Z3_ast(phi_star) == 0) {
+                //    phi_star = imply;
+                // } else {
+                phi_star = phi_star && imply;
+                //}
             }
         }
     }

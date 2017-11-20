@@ -11,6 +11,8 @@ class treesolver :public solver {
 private:
         void get_constants(z3::expr const& exp, std::set<z3::expr, exprcomp>& vec);
         void get_constants(predicate& pred, std::set<z3::expr, exprcomp>& vec);
+
+
         void get_alpha_beta(predicate& pred, z3::expr_vector& alpha, z3::expr_vector& beta);
         void get_alpha_beta(predicate& pred, std::vector<Vertex>& alpha, std::vector<Vertex>& beta);
         void get_gamma_delta_epsilon(pred_rule& rule, z3::expr_vector& gamma, z3::expr_vector& delta, z3::expr_vector& epsilon);
@@ -39,7 +41,7 @@ public:
         void check_preds();
         z3::check_result check_sat();
         z3::check_result check_entl();
-        z3::expr pred2abs(z3::expr& atom, int i);
+        z3::expr pred2abs(z3::expr& atom, int i, z3::expr_vector& new_bools);
         std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i, int n);
 };
 
