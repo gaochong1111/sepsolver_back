@@ -167,6 +167,24 @@ void graph::print(std::vector<z3::expr>& lconsts, z3::expr& space, std::string f
 }
 
 
+void graph::get_edges(std::vector<std::pair<std::pair<int, int>, int> >& edge_vec) {
+	adjacency_list::vertex_descriptor  v1, v2;
+	std::pair<edge_iterator, edge_iterator> ep;
+	edge_iterator ei, ei_end;
+	for (tie(ei, ei_end)=edges(adj_list); ei!=ei_end; ++ei) {
+		v1 = boost::source(*ei, adj_list);
+		v2 = boost::target(*ei, adj_list);
+		std::pair<std::pair<int, int>, int> edge;
+		std::set<int> v1_set = adj_list[v1];
+		edge.first.first = *(v1_set.begin());
+		std::set<int> v2_set = adj_list[v2];
+		edge.first.second = *(v2_set.begin());
+		edge.second = adj_list[*ei];
+		edge_vec.push_back(edge);
+	}
+}
+
+
 void graph::print() {
 	std::cout << "print graph:\n";
 	std::ofstream out("graph.dot");
@@ -535,7 +553,7 @@ std::pair<graph::edge_iterator, graph::edge_iterator> graph::get_edge()
 	return boost::edges(adj_list);
 }
 
-size_t graph::var_to_ver(size_t vid)
+size_t graph::get_vertex_id(size_t vid)
 {
 	return adj_list[boost::graph_bundle][vid];
 }

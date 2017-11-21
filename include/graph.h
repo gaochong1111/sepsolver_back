@@ -49,16 +49,12 @@ public:
 	std::vector<edge_descriptor> get_path(size_t, size_t) const;
 	std::vector<edge_descriptor> get_path(size_t);
 
-	size_t var_to_ver(size_t);
-	size_t source(edge_descriptor);
-	size_t target(edge_descriptor);
 
 	std::vector<int> get_cc_cycle_num() const;
 	std::vector<cc_cycle_t>& get_cc_cycle();
 	int which_cc(size_t) const;
 	bool is_dag_like() const;
-	int get_edge_property(size_t, size_t) const;
-	int get_edge_property(edge_descriptor);
+
 
 	/* only act right in dag like graph */
 	std::pair<int, int> get_cycle_coord(size_t) const;
@@ -70,17 +66,24 @@ public:
 	std::vector<edge_descriptor> merge_path(std::vector<edge_descriptor>&, std::vector<int>&) const;
 	std::vector<edge_descriptor> merge_path(std::vector<edge_descriptor>&, std::vector<edge_descriptor>&);
 	std::vector<std::pair<int, int>> get_cycle_coords() const;
-public:
-	// void add_vertex(sl_abstr&);
-	// void add_edge(sl_abstr&);
+
 	void seek_cc();
 	void seek_cycle();
 	void print_cc(std::vector<cc_t>&);
 
+public:
 	void print();
 	void print(std::vector<z3::expr>& lconsts, z3::expr& space, std::string file_name="graph.dot");
 	void print_cc();
 	void print_cyc();
+	void get_edges(std::vector<std::pair<std::pair<int, int>, int> >& edge_vec);
+	size_t get_vertex_id(size_t);
+	size_t source(edge_descriptor);
+	size_t target(edge_descriptor);
+	int get_edge_property(size_t, size_t) const;
+	int get_edge_property(edge_descriptor);
+
+
 
 private:
 	std::vector<edge_descriptor> get_path(size_t, size_t, std::vector<edge_descriptor>&,

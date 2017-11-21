@@ -79,6 +79,26 @@ bool expr_tool::is_sub_set(std::set<z3::expr, exprcomp> &expr_set1, std::set<z3:
         return true;
 }
 
+void expr_tool::diff_set(std::set<z3::expr, exprcomp> &expr_set1, std::set<z3::expr, exprcomp> &expr_set2, std::set<z3::expr, exprcomp> &expr_set3) {
+        for (auto e : expr_set1) {
+                if (expr_set2.find(e) == expr_set2.end()) expr_set3.insert(e);
+        }
+}
+
+void expr_tool::union_set(std::set<z3::expr, exprcomp> &expr_set1, std::set<z3::expr, exprcomp> &expr_set2, std::set<z3::expr, exprcomp> &expr_set3) {
+        for (auto e : expr_set1) {
+               expr_set3.insert(e);
+        }
+        for (auto e : expr_set2) {
+                expr_set3.insert(e);
+        }
+}
+
+void expr_tool::inter_set(std::set<z3::expr, exprcomp> &expr_set1, std::set<z3::expr, exprcomp> &expr_set2, std::set<z3::expr, exprcomp> &expr_set3) {
+        for (auto e : expr_set1) {
+                if (expr_set2.find(e) != expr_set2.end()) expr_set3.insert(e);
+        }
+}
 
 int expr_tool::index_of_exp(z3::expr exp, std::vector<z3::expr> &expr_vec) {
         for (int i=0; i<expr_vec.size(); i++) {

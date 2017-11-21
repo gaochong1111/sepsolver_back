@@ -1195,7 +1195,7 @@ void smt2parser::parse_assert() {
         assert(m_assert ==  curr_id());
         parse_expr();
 
-        // TODO
+        //
         z3::expr formula = m_expr_stack.back();
         if (m_ctx.is_no_formula()) m_ctx.set_negf(formula);
         else if (m_ctx.is_sat()) m_ctx.set_posf(formula);

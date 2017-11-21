@@ -26,6 +26,10 @@ public:
 
         static void expr_set_to_vec(std::set<z3::expr, exprcomp>& expr_set, std::vector<z3::expr>& expr_vec);
         static bool is_sub_set(std::set<z3::expr, exprcomp>& expr_set1, std::set<z3::expr, exprcomp>& expr_set2);
+        static void union_set(std::set<z3::expr, exprcomp>& expr_set1, std::set<z3::expr, exprcomp>& expr_set2, std::set<z3::expr, exprcomp>& expr_set3);
+        static void inter_set(std::set<z3::expr, exprcomp>& expr_set1, std::set<z3::expr, exprcomp>& expr_set2, std::set<z3::expr, exprcomp>& expr_set3);
+        static void diff_set(std::set<z3::expr, exprcomp>& expr_set1, std::set<z3::expr, exprcomp>& expr_set2, std::set<z3::expr, exprcomp>& expr_set3);
+
 
         static int index_of_exp(z3::expr exp, std::vector<z3::expr>& expr_vec);
 
