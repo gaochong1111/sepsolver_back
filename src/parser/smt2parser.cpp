@@ -1131,6 +1131,8 @@ void smt2parser::parse_define_fun() {
                 throw smt2exception(info, line(),  pos());
         }
 
+
+
         // parse the parameters
         unsigned spos = m_var_frame_stack.back();
         unsigned epos = m_sorted_var_stack.size();
@@ -1163,17 +1165,29 @@ void smt2parser::parse_define_fun() {
         next();
         check_rparen("invalid define-fun, excepted ')'");
 
+
+
         z3::expr body = m_expr_stack.back();
+
         m_expr_stack.pop_back();
 
-        // new predicate TODO
+
+
+
+        // new predicate
         // args, base_rule, rec_rules
-        z3::expr null(m_ctx.z3_context());
+        z3::expr null(z3_ctx());
 
         predicate pred(fun, args, null);
+
+
         check_pred(body, pred);
 
+
+
+
         m_ctx.add_predicate(pred);
+
 
 
         // std::cout << pred << std::endl;
@@ -1182,6 +1196,7 @@ void smt2parser::parse_define_fun() {
         m_sorted_var_stack.erase(m_sorted_var_stack.begin()+spos, m_sorted_var_stack.end());
         m_var_frame_stack.pop_back();
         logger() << "parse define-fun end.";
+
 }
 
 /**
@@ -1198,7 +1213,13 @@ void smt2parser::parse_assert() {
         //
         z3::expr formula = m_expr_stack.back();
         if (m_ctx.is_no_formula()) m_ctx.set_negf(formula);
-        else if (m_ctx.is_sat()) m_ctx.set_posf(formula);
+        else if (m_ctx.is_sat()) {
+                if (formula.decl().name().str() != "not") {
+                        std::string info = "invalid assert, the second formula must be negative.";
+                        throw smt2exception(info, line(),  pos());
+                }
+                m_ctx.set_posf(formula.arg(0));
+        }
         else {
                 std::string info = "invalid assert, support at most 2 assertions.";
                 throw smt2exception(info, line(),  pos());
@@ -1221,6 +1242,10 @@ void smt2parser::parse_check_sat() {
 
         next();
         check_rparen("invalid check-sat, excepted ')'");
+
+
+
+
         // logger() << "solve the sat ...\n";
         if (sol == NULL) {
                 sol = solverfactory::get_solver(m_ctx);
@@ -1246,6 +1271,7 @@ void smt2parser::parse_get_model() {
 }
 
 void smt2parser::parse_cmd() {
+
         check_lparen_next("invalid command, '(' expected.");
         check_identifier("invalid command, symbol expected");
         z3::symbol s = curr_id();

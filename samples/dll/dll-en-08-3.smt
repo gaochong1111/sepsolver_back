@@ -35,36 +35,30 @@
 
 (declare-fun E1() Ldll_t)
 (declare-fun E2() Ldll_t)
-(declare-fun E3() Ldll_t)
 
 (declare-fun E1_p() Ldll_t)
 (declare-fun E2_p() Ldll_t)
-(declare-fun E3_p() Ldll_t)
 
 
 (declare-fun x1() Int)
 (declare-fun x2() Int)
-(declare-fun x3() Int)
-
-
-
 
 
 ;; phi
 (assert (and
+        (= x1 (+ x2 1))
+        (= E1 E2_p)
         (tobool
-            (ssep
-                (ldllseg E1 E1_p x1 E2 E2_p x2)
-                (ldllseg E2 E2_p x2 E3 E3_p x3)
-        )))
+            (pto E1 (sref (ref next E2) (ref prev E1_p)))
+        ))
 )
 
 ;; psi
 (assert
-(not (and
-     true
+(not (and true
      (tobool
-        (ldllseg E1 E1_p x1 E3 E3_p x3)
-     )))
+        (ldllseg E1 E1_p x1 E2 E2_p x2)
+)))
+
 )
 (check-sat)

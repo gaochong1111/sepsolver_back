@@ -5,25 +5,21 @@
 (declare-fun next() (Field Ldll_t Ldll_t))
 (declare-fun prev() (Field Ldll_t Ldll_t))
 
-(define-fun ldllseg
-	((?E Ldll_t) (?P Ldll_t) (?x0 Int) (?F Ldll_t) (?L Ldll_t) (?x1 Int)) Space
+(define-fun dllseg
+	((?E Ldll_t) (?P Ldll_t) (?F Ldll_t) (?L Ldll_t) ) Space
 	(tospace
 		 (or
 			(and
 				(= ?E ?F)
 				(= ?P ?L)
-				(= ?x0 ?x1) 
 			)
 			(exists
-				((?X Ldll_t) (?x2 Int))
+				((?X Ldll_t))
 				(and
-					;(<= ?x0 0)
-					; (>= ?x0 2)
-					(= ?x0 (+ ?x2 1))
 					(tobool
 						(ssep
 							(pto ?E (sref (ref next ?X) (ref prev ?P) ))
-							(ldllseg ?X ?E ?x2 ?F ?L ?x1)
+							(dllseg ?X ?E  ?F ?L)
 						)
 					)
 				)
@@ -31,7 +27,6 @@
 		)
 	)
 )
-
 
 (declare-fun E1() Ldll_t)
 (declare-fun E2() Ldll_t)
@@ -42,29 +37,23 @@
 (declare-fun E3_p() Ldll_t)
 
 
-(declare-fun x1() Int)
-(declare-fun x2() Int)
-(declare-fun x3() Int)
-
-
-
 
 
 ;; phi
 (assert (and
+        (= E1 E2_p)
         (tobool
             (ssep
-                (ldllseg E1 E1_p x1 E2 E2_p x2)
-                (ldllseg E2 E2_p x2 E3 E3_p x3)
+                 (pto E1 (sref (ref next E2) (ref prev E1_p)))
+                 (dllseg E2 E2_p E3 E3_p)
         )))
 )
 
 ;; psi
-(assert
-(not (and
-     true
-     (tobool
-        (ldllseg E1 E1_p x1 E3 E3_p x3)
-     )))
-)
+(assert (not
+        (tobool
+            (dllseg E1 E1_p  E3 E3_p)
+)))
+
 (check-sat)
+

@@ -45,6 +45,7 @@
 (declare-fun x1() Int)
 (declare-fun x2() Int)
 (declare-fun x3() Int)
+(declare-fun x4() Int)
 
 
 
@@ -52,19 +53,21 @@
 
 ;; phi
 (assert (and
+        ;(= x1 (+ x2 1))
         (tobool
             (ssep
                 (ldllseg E1 E1_p x1 E2 E2_p x2)
+                (pto E2 (sref (ref next E3) (ref prev E2_p)))
                 (ldllseg E2 E2_p x2 E3 E3_p x3)
         )))
 )
 
 ;; psi
 (assert
-(not (and
-     true
+(not (and true
      (tobool
         (ldllseg E1 E1_p x1 E3 E3_p x3)
-     )))
+)))
+
 )
 (check-sat)

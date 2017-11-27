@@ -114,7 +114,6 @@ z3::expr solver::get_interp(z3::model &m, z3::expr exp) {
  * @param space : the result space part
  */
 void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) {
-    int i=0;
 
     if (formula.decl().name().str() == "tobool") {
         // only space part
@@ -123,24 +122,36 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
     } else {
         // data and space
         z3::expr_vector data_items(z3_ctx());
-        for (; i<formula.num_args(); i++) {
-            if (formula.arg(i).is_app() && formula.arg(i).decl().name().str() == "tobool") {
-                break;
-            }
-            // (= Z1 Z2) or (distinct Z1 Z2) ==> abs
-            if (formula.arg(i).num_args()==2 && formula.arg(i).arg(0).get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
-                z3::expr item = formula.arg(i);
-                z3::expr z1_int = z3_ctx().int_const(item.arg(0).to_string().c_str());
-                z3::expr z2_int = z3_ctx().int_const(item.arg(1).to_string().c_str());
-                if (item.decl().name().str() == "distinct") {
-                    data_items.push_back(z1_int != z2_int);
-                } else {
-                    data_items.push_back(z1_int == z2_int);
+        std::vector<z3::expr> stack;
+        stack.push_back(formula);
+        while(!stack.empty()) {
+            z3::expr curr = stack.back();
+            if (expr_tool::is_fun(curr, "and")) {
+                stack.pop_back();
+                for (int i=0; i<curr.num_args(); i++) {
+                    if (expr_tool::is_fun(curr.arg(i), "tobool")) {
+                        space = curr.arg(i);
+                        break;
+                    }
+                    // (= Z1 Z2) or (distinct Z1 Z2) ==> abs
+                    if (curr.arg(i).num_args()==2 && expr_tool::is_location(curr.arg(i).arg(0))) {
+                        z3::expr item = curr.arg(i);
+                        z3::expr z1_int = z3_ctx().int_const(item.arg(0).to_string().c_str());
+                        z3::expr z2_int = z3_ctx().int_const(item.arg(1).to_string().c_str());
+                        if (item.decl().name().str() == "distinct") {
+                            data_items.push_back(z1_int != z2_int);
+                        } else {
+                            data_items.push_back(z1_int == z2_int);
+                        }
+                    } else if(expr_tool::is_fun(curr.arg(i), "and")){
+                        stack.push_back(curr.arg(i));
+                    } else {
+                        data_items.push_back(curr.arg(i));
+                    }
                 }
-            } else {
-                data_items.push_back(formula.arg(i));
             }
         }
+
         //
         if (data_items.size() > 0) {
             data = mk_and(data_items);
@@ -148,9 +159,6 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
             data = z3_ctx().bool_val(true);
         }
 
-        if (i != formula.num_args()) {
-            space = formula.arg(i);
-        }
     }
 
     if (space.decl().name().str() == "tobool") {

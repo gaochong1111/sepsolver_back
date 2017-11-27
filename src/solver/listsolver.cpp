@@ -58,6 +58,12 @@ z3::expr listsolver::get_abstraction(z3::expr &formula, z3::expr& space, z3::exp
         return f_abs;
 }
 
+z3::expr listsolver::get_abstraction(z3::expr &formula, z3::expr_vector& new_bools) {
+
+        z3::expr space(z3_ctx());
+        return get_abstraction(formula, space, new_bools);
+}
+
 /**
  * check sat, negf in m_ctx
  * or check entl, negf |= posf
@@ -66,6 +72,9 @@ z3::expr listsolver::get_abstraction(z3::expr &formula, z3::expr& space, z3::exp
 z3::check_result listsolver::check_entl() {
         // TODO ....
         logger() << "list entl problem:\n";
+
+
+
         z3::solver ss(z3_ctx());
         z3::expr f_abs = z3_ctx().bool_val(true);
         ss.add(f_abs);
@@ -92,85 +101,80 @@ z3::check_result listsolver::check_entl() {
         std::set<z3::expr, exprcomp> psi_const_set;
         expr_tool::get_consts(psi, psi_const_set);
 
-        // 1.1 check var subset
 
-        logger() << "psi_const_set is subset of phi_const_set: " << expr_tool::is_sub_set(psi_const_set, phi_const_set) << std::endl;
+        // 1.1 check var subset
+        bool is_subset = expr_tool::is_sub_set(psi_const_set, phi_const_set);
+        logger() << "psi_const_set size: " << psi_const_set.size() << std::endl;
+        logger() << "phi_const_set size: " << phi_const_set.size() << std::endl;
+
+        logger() << "psi_const_set is subset of phi_const_set: " <<  is_subset << std::endl;
+        if(!is_subset) return z3::unsat;
 
         // 1.2 check sat
         z3::expr_vector phi_new_bools(z3_ctx());
         z3::expr phi_space(z3_ctx());
         z3::expr phi_abs = get_abstraction(phi, phi_space, phi_new_bools);
+        m_ctx.phi_space = phi_space;
         ss.reset();
         ss.add(phi_abs);
         z3::check_result phi_res = ss.check();
         logger() << "phi sat res: " << phi_res << std::endl;
+        if (phi_res == z3::unsat) return z3::sat;
 
         z3::expr_vector psi_new_bools(z3_ctx());
         z3::expr psi_space(z3_ctx());
         z3::expr psi_abs = get_abstraction(psi, psi_space, psi_new_bools);
+        m_ctx.psi_space = psi_space;
         ss.reset();
         ss.add(psi_abs);
         z3::check_result psi_res = ss.check();
         logger() << "psi sat res: " << psi_res << std::endl;
+        if (psi_res==z3::unsat) return z3::unsat;
 
         // 1.3 check Abs(\varphi) |= \exists Z. Abs(\psi)
         z3::expr_vector Z = psi_new_bools;
-        for (int i=0; i<psi_space.num_args(); i++) {
+        for (int i=0; i<m_ctx.psi_space.num_args(); i++) {
                 std::string k_i_name = logger().string_format("[k,%d]", i);
                 Z.push_back(z3_ctx().int_const(k_i_name.c_str()));
         }
         logger() << "Z: " << Z << std::endl;
-        z3::expr phi_abs_entl_psi_abs = phi_abs && (z3::forall(Z, psi_abs));
-        ss.reset();
-        ss.add(phi_abs_entl_psi_abs);
-        z3::check_result pep_res = ss.check();
-        logger() << "\nphi_abs entl forall psi_abs result: " << pep_res << std::endl;
-        if (pep_res == z3::sat) return z3::unsat; // if sat return unsat
+        z3::expr phi_abs_entl_psi_abs =  phi_abs && (z3::forall(Z, !psi_abs)); //
+        // z3::expr phi_abs_entl_psi_abs = z3::implies(phi_abs, (z3::forall(Z, psi_abs))); //
+        // logger() << "phi_abs_entl_psi_abs: " << phi_abs_entl_psi_abs << std::endl;
+
+        z3::solver s1(z3_ctx(), "LIA");
+        s1.add(phi_abs_entl_psi_abs);
+        z3::check_result entl_abs_res = s1.check();
+        // std::cout << "entl abs result: " << entl_abs_res << std::endl;
+        logger() << "\nphi_abs entl forall psi_abs result: " << entl_abs_res << std::endl;
+        if (entl_abs_res == z3::sat) return z3::unsat;
+
+        // logger() << "model: " << ss.get_model() << std::endl;
+        // if (pep_res == z3::sat || pep_res == z3::unknown) return z3::unsat; // if sat return unsat
 
         // 1.4 construct graph
-        // phi
-        std::set<z3::expr, exprcomp> phi_lconst_set;
-        expr_tool::get_lconsts(phi, phi_lconst_set);
-        std::vector<z3::expr> phi_lconst_vec;
-        expr_tool::expr_set_to_vec(phi_lconst_set, phi_lconst_vec);
-        // get data eq_class_vec
-        std::set<z3::expr, exprcomp> phi_dconst_set;
-        expr_tool::diff_set(phi_const_set, phi_lconst_set, phi_dconst_set);
-        std::vector<z3::expr> phi_dconst_vec;
-        expr_tool::expr_set_to_vec(phi_dconst_set, phi_dconst_vec);
-        std::vector<std::set<int> > phi_data_eq_class_vec;
-        get_eq_class(phi_abs, phi_dconst_vec, phi_data_eq_class_vec);
+        // phi phi_const_vec
+        //std::vector<z3::expr> phi_const_vec;
+        // std::vector<int> phi_const_eq_class_vec(phi_const_set.size(), -1);
+        init_int_vector(m_ctx.phi_const_eq_class_vec, phi_const_set.size());
 
-        // psi
-        std::set<z3::expr, exprcomp> psi_lconst_set;
-        expr_tool::get_lconsts(psi, psi_lconst_set);
-        std::vector<z3::expr> psi_lconst_vec;
-        expr_tool::expr_set_to_vec(psi_lconst_set, psi_lconst_vec);
-        std::set<z3::expr, exprcomp> psi_dconst_set;
-        expr_tool::diff_set(psi_const_set, psi_lconst_set, psi_dconst_set);
-        std::vector<z3::expr> psi_dconst_vec;
-        expr_tool::expr_set_to_vec(psi_dconst_set, psi_dconst_vec);
-        std::vector<std::set<int> > psi_data_eq_class_vec;
-        get_eq_class(psi_abs, psi_dconst_vec, psi_data_eq_class_vec);
+        get_const_vec_and_eq_class(phi, phi_abs, m_ctx.phi_const_vec, m_ctx.phi_const_eq_class_vec);
 
+        // std::vector<z3::expr> psi_const_vec;
+        // std::vector<int> psi_const_eq_class_vec(psi_const_set.size(), -1);
+        init_int_vector(m_ctx.psi_const_eq_class_vec, psi_const_set.size());
+        int psi_eq_class_size = get_const_vec_and_eq_class(psi, psi_abs, m_ctx.psi_const_vec, m_ctx.psi_const_eq_class_vec);
+        // std::vector<int> psi_eq_to_eq_table(psi_eq_class_size, -1);
+        // init map table
+        init_int_vector(m_ctx.psi_eq_to_eq_table, psi_eq_class_size);
 
         graph g_phi;
         graph g_psi;
 
-        construct_graph(phi_abs, phi_lconst_vec, phi_space, g_phi);
-        g_phi.print(phi_lconst_vec, phi_space, "g_phi.dot");
-        construct_graph(psi_abs, psi_lconst_vec, psi_space, g_psi);
-        g_psi.print(psi_lconst_vec, psi_space, "g_psi.dot");
-
-        std::vector<std::pair<std::pair<int, int>, int> > psi_edge_vec;
-        g_psi.get_edges(psi_edge_vec);
-
-        logger() << "psi edges: \n";
-        for (int i=0; i<psi_edge_vec.size(); i++) {
-                logger() << psi_edge_vec[i].first.first << "--" << psi_edge_vec[i].second << "--" << psi_edge_vec[i].first.second << std::endl;
-        }
-        logger() << std::endl;
-
+        construct_graph(phi_abs, m_ctx.phi_const_vec, m_ctx.phi_space, g_phi);
+        g_phi.print(m_ctx.phi_const_vec, m_ctx.phi_space, "g_phi.dot");
+        construct_graph(psi_abs, m_ctx.psi_const_vec, m_ctx.psi_space, g_psi);
+        g_psi.print(m_ctx.psi_const_vec, m_ctx.psi_space, "g_psi.dot");
 
 
         // 1.5 allocating plans
@@ -196,64 +200,503 @@ z3::check_result listsolver::check_entl() {
                 // omega_phi_abs = (phi_abs, omega, omega_target, g);
                 logger() << "omega_g_i is dag like: " << omega_g_i.is_dag_like() << std::endl;
                 while(!omega_g_i.is_dag_like()) {
-                        get_omega_phi_abs(omega_phi_abs_i, omega_g_i, omega, phi_space, omega_phi_abs_i1);
+                        get_omega_phi_abs(omega_phi_abs_i, omega_g_i, omega, m_ctx.phi_space, omega_phi_abs_i1);
                         omega_phi_abs_i = omega_phi_abs_i1;
                         ss.reset();
                         ss.add(omega_phi_abs_i);
                         // logger() << "omega_phi_abs_i: " << omega_phi_abs_i << std::endl;
                         if (ss.check() == z3::sat) {
                                 // feasible allocating plans
-                                construct_graph(omega_phi_abs_i, phi_lconst_vec, phi_space, omega_g_i1);
+                                construct_graph(omega_phi_abs_i, m_ctx.phi_const_vec, m_ctx.phi_space, omega_g_i1);
                                 std::string file_name = logger().string_format("omega_g_%d_%d.dot", i, j);
                                 omega_g_i = omega_g_i1;
-                                omega_g_i.print(phi_lconst_vec, phi_space, file_name);
+                                omega_g_i.print(m_ctx.phi_const_vec, m_ctx.phi_space, file_name);
                         }
                 }
-                // match omega_g_i psi_g TODO...
+                // match omega_g_i psi_g
                 std::cout << "matching \n";
-                std::pair<std::pair<int, int>, int> edge;
-                for (int i=0; i<psi_edge_vec.size(); i++) {
-                        edge = psi_edge_vec[i];
-                        z3::expr psi_atom = psi_space.arg(edge.second);
-                        int src = expr_tool::index_of_exp(psi_lconst_vec[edge.first.first], phi_lconst_vec);
-                        int dst = expr_tool::index_of_exp(psi_lconst_vec[edge.first.second], phi_lconst_vec);
-                        src = omega_g_i.get_vertex_id(src);
-                        dst = omega_g_i.get_vertex_id(dst);
+                // match omega_graph to psi_graph
+                // reset m_ctx.phi_const_eq_class_vec
+                // reset m_ctx.psi_eq_to_eq_table
 
-                        std::vector<graph::edge_descriptor> path = omega_g_i.get_path(src, dst);
+                m_ctx.phi_const_vec.clear(); // TODO. modify get_const_vec_and_eq_class
+                get_const_vec_and_eq_class(phi, omega_phi_abs_i, m_ctx.phi_const_vec, m_ctx.phi_const_eq_class_vec);
+                logger() << "eq_to_eq table: \n";
+                for (int i=0; i<m_ctx.psi_const_eq_class_vec.size(); i++) {
+                        int psi_eq = m_ctx.psi_const_eq_class_vec[i];
+                        int idx = expr_tool::index_of_exp(m_ctx.psi_const_vec[i], m_ctx.phi_const_vec);
+                        int phi_eq = m_ctx.phi_const_eq_class_vec[idx];
+                        m_ctx.psi_eq_to_eq_table[psi_eq] = phi_eq;
 
-                        logger() << "path: \n";
-                        for (int j=0; j<path.size(); j++) {
-                                logger() << omega_g_i.source(path[j]);
-                                logger() << "---";
-                                logger() << omega_g_i.get_edge_property(path[j]);
-                                logger() << "---";
-                                logger() << omega_g_i.target(path[j]) << std::endl;
-
-                        }
-
-                        if (psi_atom.decl().name().str() == "pto") {
-                                if (path.size()==1) {
-                                        z3::expr omega_phi_atom = phi_space.arg(omega_g_i.get_edge_property(path[0]));
-                                        if (omega_phi_atom.decl().name().str() != "pto") {
-                                                return z3::unsat;
-                                        }
-                                        // match pto atom
-                                } else {
-                                        return z3::unsat;
-                                }
-                        } else {
-                                // path match pred atom
-                                // psi_pred_atom - extend by path
-                        }
+                        logger() << "psi_eq: " << psi_eq << "----" << "phi_eq: " << phi_eq << std::endl;
                 }
 
+
+                // match g_psi to omega_g_i
+                bool flag = match_graph(g_psi, omega_g_i);
+                if (!flag)  return z3::unsat;
                 omega_g_i = g_phi;
                 omega_phi_abs_i = phi_abs;
-        } while(get_next_omega(omega, cc_cycle_num));
+        } while(get_next_omega(omega, cc_cycle_num) && !g_phi.is_dag_like());
 
-        return result;
+        return z3::sat;
 }
+
+/**
+ * match pto
+ * @param psi_atom : atom
+ * @param omega_atom
+ * @return true or false;
+ */
+bool listsolver::match_pto(z3::expr& psi_atom, z3::expr& omega_atom) {
+        std::vector<z3::expr> psi_vars;
+        std::vector<z3::expr> phi_atom_vars;
+        psi_vars.push_back(psi_atom.arg(0));
+        phi_atom_vars.push_back(omega_atom.arg(0));
+        expr_tool::get_all_field_of_pto(psi_atom, psi_vars);
+        expr_tool::get_all_field_of_pto(omega_atom, phi_atom_vars);
+        // match
+        for (int i=0; i<psi_vars.size(); i++) {
+                z3::expr psi_v = psi_vars[i];
+                z3::expr phi_v = phi_atom_vars[i];
+                int phi_cls = m_ctx.phi_const_eq_class_vec[ expr_tool::index_of_exp(phi_v, m_ctx.phi_const_vec)];
+                int psi_cls = m_ctx.psi_const_eq_class_vec[expr_tool::index_of_exp(psi_v, m_ctx.psi_const_vec)];
+                if (m_ctx.psi_eq_to_eq_table[psi_cls] != phi_cls) return false;
+        }
+        return true;
+}
+
+/**
+ * match path to atom space
+ * @param paths : path atoms ids
+ * @param atom_space : unfold space
+ * @param eq_to_eq table
+ * @return true or false
+ */
+bool listsolver::match_path_to_atom_space(std::vector<int> &paths, z3::expr &atom_space, std::vector<z3::expr>&  omega_const_vec, std::vector<int>&  omega_const_eq_class_vec, std::vector<int> &omega_eq_to_eq_table) {
+        for (int j=0; j<atom_space.num_args(); j++) {
+                z3::expr psi_j = atom_space.arg(j);
+                z3::expr phi_atom_j = m_ctx.phi_space.arg(paths[j]);
+                std::vector<z3::expr> psi_vars;
+                std::vector<z3::expr> phi_atom_vars;
+
+                if (expr_tool::is_fun(psi_j, "pto")) {
+                        // logger() << "atom_j: " << atom_j << std::endl;
+                        // logger() << "phi_atom_j: " << phi_atom_j << std::endl;
+                        psi_vars.push_back(psi_j.arg(0));
+                        phi_atom_vars.push_back(phi_atom_j.arg(0));
+                        expr_tool::get_all_field_of_pto(psi_j, psi_vars);
+                        expr_tool::get_all_field_of_pto(phi_atom_j, phi_atom_vars);
+                } else {
+                        for (int i=0; i<psi_j.num_args(); i++) {
+                                psi_vars.push_back(psi_j.arg(i));
+                                phi_atom_vars.push_back(phi_atom_j.arg(i));
+                        }
+                }
+                // match
+                for (int i=0; i<psi_vars.size(); i++) {
+                        z3::expr psi_v = psi_vars[i];
+                        z3::expr phi_v = phi_atom_vars[i];
+                        int omega_cls = omega_const_eq_class_vec[expr_tool::index_of_exp(psi_v, omega_const_vec)];
+                        int phi_cls = m_ctx.phi_const_eq_class_vec[ expr_tool::index_of_exp(phi_v, m_ctx.phi_const_vec)];
+                        if (omega_eq_to_eq_table[omega_cls] != -1 && omega_eq_to_eq_table[omega_cls] != phi_cls) {
+                                return false;
+                        }
+                        omega_eq_to_eq_table[omega_cls] = phi_cls;
+                        // phi
+                        int psi_idx = expr_tool::index_of_exp(psi_v, m_ctx.psi_const_vec);
+                        int psi_cls = m_ctx.psi_const_eq_class_vec[psi_idx];
+                        if (psi_idx != -1 && m_ctx.psi_eq_to_eq_table[psi_cls] != phi_cls) return false;
+                }
+        }
+        return true;
+}
+
+/**
+ * match graph psi to omega_graph
+ * @param g_psi
+ * @param omega_g_i
+ * @return true or false
+ */
+bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
+
+        //  get psi_edges
+        std::vector<std::pair<std::pair<int, int>, int> > psi_edge_vec;
+        g_psi.get_edges(psi_edge_vec);
+        // get omega_edges
+        std::vector<std::pair<std::pair<int, int>, int> > omega_edge_vec;
+        omega_g_i.get_edges(omega_edge_vec);
+        std::vector<int> omega_edge_table(omega_edge_vec.size(), -1);
+
+        //CC
+        std::vector<int> cc_cycle_num = omega_g_i.get_cc_cycle_num();
+        std::vector<std::pair<int, int> > cc_cycle_table;
+        for (int i=0; i<cc_cycle_num.size(); i++) {
+                std::pair<int, int> selected(-1, -1);
+                if (cc_cycle_num[i] > 0) {
+                        selected.first = 0; // -1: no cycle; 0: no process; 1: candidate  2:selected
+                }
+                cc_cycle_table.push_back(selected);
+        }
+
+        logger() << "psi edges: \n";
+        for (int i=0; i<psi_edge_vec.size(); i++) {
+                logger() << m_ctx.psi_const_vec[psi_edge_vec[i].first.first] << "--" << psi_edge_vec[i].second << "--" << m_ctx.psi_const_vec[psi_edge_vec[i].first.second] << std::endl;
+        }
+        logger() << std::endl;
+        std::vector<z3::expr> psi_const_vec = m_ctx.psi_const_vec;
+        std::vector<z3::expr> phi_const_vec = m_ctx.phi_const_vec;
+        z3::expr psi_space = m_ctx.psi_space;
+        z3::expr phi_space = m_ctx.phi_space;
+
+        std::pair<std::pair<int, int>, int> edge;
+        // for each edge match one path in omega_graph
+        for (int i=0; i<psi_edge_vec.size(); i++) {
+                edge = psi_edge_vec[i];
+                z3::expr psi_atom = psi_space.arg(edge.second);
+                int src = expr_tool::index_of_exp(psi_const_vec[edge.first.first], phi_const_vec);
+                int dst = expr_tool::index_of_exp(psi_const_vec[edge.first.second], phi_const_vec);
+                src = omega_g_i.get_vertex_id(src);
+                dst = omega_g_i.get_vertex_id(dst);
+                int cc_id = omega_g_i.which_cc(src);
+                // check
+                if (cc_id != omega_g_i.which_cc(dst)) return false; // ?
+
+                std::vector<graph::edge_descriptor> path = omega_g_i.get_path(src, dst);
+
+                logger() << "path: \n";
+                for (int j=0; j<path.size(); j++) {
+                        logger() << omega_g_i.source(path[j]);
+                        logger() << "---";
+                        logger() << omega_g_i.get_edge_property(path[j]);
+                        logger() << "---";
+                        logger() << omega_g_i.target(path[j]) << std::endl;
+
+                }
+
+                std::vector<int> paths;
+                for (int j=0; j<path.size(); j++) {
+                        paths.push_back(omega_g_i.get_edge_property(path[j]));
+                }
+
+                int edge_num = paths.size();
+                if (expr_tool::is_fun(psi_atom, "pto")) {
+                        // pto map pto
+                        if (edge_num==1) {
+                                z3::expr omega_phi_atom = phi_space.arg(paths[0]);
+                                if (!expr_tool::is_fun(omega_phi_atom, "pto")) {
+                                        return z3::unsat;
+                                }
+                                // match pto atom
+                                if(!match_pto(psi_atom, omega_phi_atom)) return false;
+                        } else {
+                                return false;
+                        }
+                } else{
+                        // match_pred (psi_atom, omega_phi_atom);
+                        if (cc_cycle_num[cc_id] == 0) {
+                                // dag
+                                if(paths.size()>0 && !match_path_to_atom_space(paths, psi_atom)) return false;
+                        } else {
+                                // dag_like one cycle
+                                std::pair<int, int> coord(cc_id, 0);
+                                std::vector<int> cycle = omega_g_i.get_cycle(coord);
+                                // dst and last_src in cycle
+                                int last_src = omega_g_i.source(path[path.size()-1]);
+                                // match paths
+                                bool match_res1 = match_path_to_atom_space(paths, psi_atom);
+                                // match paths+cycle
+                                std::vector<graph::edge_descriptor> cycle_path = omega_g_i.get_path(dst);
+                                for (int j=0; j<cycle_path.size(); j++) {
+                                        paths.push_back(omega_g_i.get_edge_property(cycle_path[j]));
+                                }
+                                bool match_res2 = match_path_to_atom_space(paths, psi_atom);
+
+                                if (index_of_int(dst, cycle) != -1 && index_of_int(last_src, cycle) == -1) {
+                                        // match
+                                        if (cc_cycle_table[cc_id].first != 2) {
+                                                if (match_res1 && match_res2) {
+                                                        cc_cycle_table[cc_id].first = 1;
+                                                        cc_cycle_table[cc_id].second = i;
+                                                } else if (!match_res1 && match_res2) {
+                                                        cc_cycle_table[cc_id].first = 2;
+                                                        cc_cycle_table[cc_id].second = i;
+                                                        edge_num = paths.size(); // add edges
+                                                } else if (!match_res1 && !match_res2) {
+                                                        return false;
+                                                }
+                                        } else {
+                                                if (!match_res1) return false;
+                                        }
+                                } else if(index_of_int(dst, cycle) != -1 && src==dst){
+                                        if (cc_cycle_table[cc_id].first != 2 && match_res2) {
+                                                cc_cycle_table[cc_id].first = 1;
+                                                cc_cycle_table[cc_id].second = i;
+                                        }
+                                } else {
+                                        if (!match_res1) return false;
+                                        if (index_of_int(dst, cycle) != -1) {
+                                                // F in cycle
+                                                cc_cycle_table[cc_id].first = 2;
+                                        }
+                                }
+                        }
+                }
+
+                for (int j=0; j<edge_num; j++) {
+                        omega_edge_table[paths[j]] ++;
+                }
+        }
+
+        // check global info
+        logger() <<"cc_cycle_table: \n";
+        for (int i=0; i<cc_cycle_table.size(); i++) {
+
+                logger() << "cc_cycle_num: " << i << " , status: " << cc_cycle_table[i].first << std::endl;
+
+                if (cc_cycle_table[i].first==0) return false;
+                if (cc_cycle_table[i].first==1) {
+                        std::pair<int, int> coord(i, 0);
+                        std::vector<int> cycle = omega_g_i.get_cycle(coord);
+                        std::vector<graph::edge_descriptor> cycle_path = omega_g_i.get_path(cycle[0]);
+                        for (int j=0; j<cycle_path.size(); j++) {
+                                int path_idx = omega_g_i.get_edge_property(cycle_path[j]);
+                                omega_edge_table[path_idx]++;
+                        }
+                }
+        }
+
+
+
+        //
+        logger() << "omega_edges_table: \n";
+
+        for (int i=0; i<omega_edge_table.size(); i++) {
+                logger() << "edge: " << i << " , status: " << omega_edge_table[i] << std::endl;
+                if (omega_edge_table[i]!=0) return false;
+        }
+        return true;
+}
+
+
+bool listsolver::match_path_to_atom_space(std::vector<int> &paths, z3::expr &psi_atom) {
+        // path match pred atom
+        if (paths.size() == 0) return true;
+        // 1. psi_pred_atom - extend by path
+        z3::expr omega_f(z3_ctx());
+        z3::expr atom_space(z3_ctx());
+        // z3::expr_vector new_vars(z3_ctx());
+        unfold_by_path(paths, psi_atom, omega_f);
+        z3::expr omega_f_abs(z3_ctx());
+        z3::expr_vector new_bools(z3_ctx());
+        omega_f_abs = get_abstraction(omega_f, atom_space, new_bools);
+        // logger() << "omega_f_abs: " << omega_f_abs <<std::endl;
+        std::set<z3::expr, exprcomp> omega_const_set;
+        expr_tool::get_consts(omega_f, omega_const_set);
+        std::vector<z3::expr> oemga_const_vec;
+        std::vector<int> omega_const_eq_class_vec(omega_const_set.size(), -1);
+        int eq_count = get_const_vec_and_eq_class(omega_f, omega_f_abs, oemga_const_vec, omega_const_eq_class_vec);
+        // logger() << "eq_count: " << eq_count << std::endl;
+        std::vector<int> omega_eq_to_eq_table(eq_count, -1);
+
+        if(!match_path_to_atom_space(paths, atom_space,   oemga_const_vec, omega_const_eq_class_vec, omega_eq_to_eq_table)) return false;
+        return true;
+}
+
+
+/**
+ * unfold predicate atom by path
+ * @param path : match path
+ * @param psi_atom : pred atom
+ * @param omega_f : unfold formula
+ */
+void listsolver::unfold_by_path(std::vector<int> &path, z3::expr &psi_atom, z3::expr &omega_f) {
+        z3::expr atom_data = z3_ctx().bool_val(true);
+        std::vector<z3::expr> atom_spaces;
+        atom_spaces.push_back(psi_atom);
+        predicate pred = m_ctx.get_pred(0); // entl problem has only one predicate
+        int st_par_size = pred.size_of_static_parameters();
+
+        // unfold_by_path(path, psi_atom, atom_data, atom_space);
+        for (int j=0; j<path.size(); j++) {
+                z3::expr atom_j = m_ctx.phi_space.arg(path[j]);
+                // logger() << "atom_j: " << atom_j << std::endl;
+                if (expr_tool::is_fun(atom_j, "pto")) {
+                        // extend one pto
+                        unfold_pto(pred, atom_data, atom_spaces);
+                        if (j==path.size()-1) {
+                                z3::expr last_pred = atom_spaces.back();
+                                int size = last_pred.num_args() - st_par_size;
+                                for(int k=0; k<size/2; k++) {
+                                        atom_data = atom_data && (last_pred.arg(k) == last_pred.arg(k+size/2));
+                                }
+                                atom_spaces.pop_back();
+                        }
+                } else if (j<path.size()-1) {
+                        // extend one pred
+                        unfold_pred(pred, atom_spaces);
+                }
+        }
+
+        // make a space atom
+        z3::expr atom_space = atom_spaces[0];
+        if (atom_spaces.size() >= 2) {
+                z3::sort range = z3_ctx().uninterpreted_sort("Space");
+                z3::sort_vector domains(z3_ctx());
+                for (unsigned i=0; i<atom_spaces.size(); i++) {
+                        domains.push_back(range);
+                }
+                z3::func_decl ssep_f = z3_ctx().function("ssep", domains, range);
+                z3::expr_vector args(z3_ctx());
+                for (int j=0; j<atom_spaces.size(); j++) args.push_back(atom_spaces[j]);
+                atom_space = ssep_f(args);
+        }
+
+        z3::sort domain = z3_ctx().uninterpreted_sort("Space");
+        z3::sort range = z3_ctx().bool_sort();
+        z3::func_decl tobool_f = z3_ctx().function("tobool", domain, range);
+        atom_space = tobool_f(atom_space);
+        omega_f = atom_data && atom_space;
+}
+
+
+
+/**
+ * get const vector and eq_class by phi and phi_abs
+ * @param phi : the formula phi
+ * @param phi_abs : the abstraction of phi
+ * @param const_vec : output const vector
+ * @param const_eq_class : output const vector map eq_class
+ * @return int: the eq_class_count
+ */
+int listsolver::get_const_vec_and_eq_class(z3::expr &phi, z3::expr phi_abs, std::vector<z3::expr> &const_vec, std::vector<int> &const_eq_class) {
+        std::set<z3::expr, exprcomp> phi_lconst_set;
+        expr_tool::get_lconsts(phi, phi_lconst_set);
+        std::vector<z3::expr> phi_lconst_vec;
+        expr_tool::expr_set_to_vec(phi_lconst_set, phi_lconst_vec);
+        std::vector<std::set<int> > phi_location_eq_class_vec;
+        std::vector<int> phi_lconst_class(phi_lconst_vec.size(), -1);
+        get_eq_class(phi_abs, phi_lconst_vec, phi_location_eq_class_vec, phi_lconst_class);
+        // get data eq_class_vec
+        std::set<z3::expr, exprcomp> phi_dconst_set;
+        expr_tool::get_dconsts(phi, phi_dconst_set);
+        std::vector<z3::expr> phi_dconst_vec;
+        expr_tool::expr_set_to_vec(phi_dconst_set, phi_dconst_vec);
+        std::vector<std::set<int> > phi_data_eq_class_vec;
+        std::vector<int> phi_dconst_class(phi_dconst_vec.size(), -1);
+        get_eq_class(phi_abs, phi_dconst_vec, phi_data_eq_class_vec, phi_dconst_class);
+
+        // logger() << "var size in get: " << phi_lconst_vec.size() + phi_dconst_vec.size() << std::endl;
+
+
+        int loc_size = phi_lconst_vec.size();
+        int loc_eq_size = phi_location_eq_class_vec.size();
+        for (int i=0; i<phi_lconst_vec.size(); i++) {
+                const_vec.push_back(phi_lconst_vec[i]);
+                const_eq_class[i] = phi_lconst_class[i];
+                // logger() << phi_lconst_vec[i] << std::endl;
+        }
+        for (int i=0; i<phi_dconst_vec.size(); i++) {
+                const_vec.push_back(phi_dconst_vec[i]);
+                const_eq_class[loc_size+i] = phi_dconst_class[i]+loc_eq_size;
+                // logger() << phi_dconst_vec[i] << std::endl;
+        }
+
+        // logger() << "location eq class :" << phi_location_eq_class_vec.size() << std::endl;
+        // logger() << "data eq class :" <<phi_data_eq_class_vec.size() << std::endl;
+
+
+        return phi_location_eq_class_vec.size() + phi_data_eq_class_vec.size();
+}
+
+
+
+/**
+ * extend predicate atom
+ * @param pred : predicate definition
+ * @parram atom_space : extend space atoms
+ */
+void listsolver::unfold_pred(predicate &pred, std::vector<z3::expr> &atom_space) {
+
+        int unfold_idx = atom_space.size();
+        z3::expr atom = atom_space[unfold_idx-1];
+        int size = atom.num_args() - pred.size_of_static_parameters(); // size of source and destination paramaters
+        atom_space.pop_back();
+        z3::expr_vector pred1_args(z3_ctx());
+        z3::expr_vector pred2_args(z3_ctx());
+        for (int i=0; i<size/2; i++) {
+                pred1_args.push_back(atom.arg(i));
+                z3::sort st = atom.arg(i).get_sort();
+                std::string new_name = logger().string_format("pred_var_%d_%d", i, unfold_idx);
+                z3::expr new_var = z3_ctx().constant(new_name.c_str(), st);
+                // new_vars.push_back(new_var);
+                pred2_args.push_back(new_var);
+        }
+        for (int i=size/2; i<size; i++) {
+                pred1_args.push_back(pred2_args[i-size/2]);
+                pred2_args.push_back(atom.arg(i));
+        }
+        for (int i=size; i<atom.num_args(); i++) {
+                pred1_args.push_back(atom.arg(i));
+                pred2_args.push_back(atom.arg(i));
+        }
+        z3::func_decl pred_fun = pred.get_fun();
+        z3::expr pred1 = pred_fun(pred1_args);
+        z3::expr pred2 = pred_fun(pred2_args);
+        atom_space.push_back(pred1);
+        atom_space.push_back(pred2);
+}
+
+/**
+ * extend one pto atom
+ * @param pred : predicate definition
+ * @param atom_data : extend data constraints
+ * @param atom_space : extend space atoms
+ */
+void listsolver::unfold_pto(predicate &pred, z3::expr& atom_data, std::vector<z3::expr> &atom_space) {
+        pred_rule rule = pred.get_rule(0);
+        z3::expr data = rule.get_data();
+        z3::expr pto = rule.get_pto();
+        z3::expr rec_app = rule.get_rec_apps()[0];
+
+        int unfold_idx = atom_space.size();
+        z3::expr atom = atom_space[unfold_idx-1];
+        atom_space.pop_back();
+
+        z3::expr_vector args = pred.get_pars(); // predicate parameters, formal parameters
+        z3::expr_vector f_args(z3_ctx());
+        z3::expr_vector a_args(z3_ctx()); // actual parameters
+
+        // init formla parameters and actual parameters
+        for (int j=0; j<atom.num_args(); j++) {
+                f_args.push_back(args[j]);
+                a_args.push_back(atom.arg(j));
+        }
+
+        z3::expr_vector x_h(z3_ctx());
+        rule.get_x_h(x_h);
+        // z3::expr_vector x_h_cons(z3_ctx());
+        for (int j=0; j<x_h.size(); j++) {
+                f_args.push_back(x_h[j]);
+                z3::sort st = x_h[j].get_sort();
+                std::string name = x_h[j].to_string();
+                name = name.replace(name.find(":"), 1, "");
+                name = name.replace(name.find(" "), 1, "_");
+                std::string ss = logger().string_format("%s_%d",   name.substr(1, name.length()-2).c_str(), unfold_idx);
+                z3::expr new_var = z3_ctx().constant(ss.c_str(), st);
+                // new_vars.push_back(new_var);
+                a_args.push_back(new_var);
+        }
+
+
+        data = data.substitute(f_args, a_args);
+        atom_data = atom_data && data;
+        pto = pto.substitute(f_args, a_args);
+        rec_app = rec_app.substitute(f_args, a_args);
+        atom_space.push_back(pto);
+        atom_space.push_back(rec_app);
+}
+
 
 /**
  * get omega_phi_abs
@@ -318,9 +761,13 @@ void listsolver::get_omega_phi_abs(z3::expr &phi_abs, graph &g, std::vector<int>
  * @param space : the space part
  * @param g : the output
  */
-void listsolver::construct_graph(z3::expr &phi_abs, std::vector<z3::expr> &phi_lconst_vec, z3::expr &phi_space, graph &g) {
+void listsolver::construct_graph(z3::expr &phi_abs, std::vector<z3::expr> &phi_const_vec, z3::expr &phi_space, graph &g) {
         std::vector<std::set<int> > eq_class_vec;
-
+        std::vector<z3::expr> phi_lconst_vec;
+        for (int i=0; i<phi_const_vec.size(); i++) {
+                if (!expr_tool::is_location(phi_const_vec[i])) break;
+                phi_lconst_vec.push_back(phi_const_vec[i]);
+        }
         get_eq_class(phi_abs, phi_lconst_vec, eq_class_vec);
 
         logger() << "size of eq_class_vec: " << eq_class_vec.size() << std::endl;
@@ -426,16 +873,35 @@ void listsolver::get_edge_from_atom(z3::expr &atom, std::vector<z3::expr> &lcons
  * @param: eq_class_vec : the output
  */
 void listsolver::get_eq_class(z3::expr &phi_abs, std::vector<z3::expr> &lconsts, std::vector<std::set<int> > &eq_class_vec) {
+        std::vector<int> lconst_class(lconsts.size(), -1);
+        get_eq_class(phi_abs, lconsts, eq_class_vec, lconst_class);
+}
+
+/**
+ * get equivalence class
+ * @param: phi_abs : the abstraction of phi
+ * @param: lconsts : the location vars
+ * @param: eq_class_vec : the output
+ * @param: lconst_class : the output
+ */
+void listsolver::get_eq_class(z3::expr &phi_abs, std::vector<z3::expr> &lconsts, std::vector<std::set<int> > &eq_class_vec,  std::vector<int>& lconst_class) {
         std::set<int> eq_class;
         z3::solver sol(z3_ctx());
-        std::vector<int> lconst_class(lconsts.size(), -1);
+        // std::vector<int> lconst_class(lconsts.size(), -1);
         for (int i=0; i<lconsts.size(); i++) {
                 for (int j=i+1; j<lconsts.size(); j++) {
-                        z3::expr X = z3_ctx().int_const(lconsts[i].to_string().c_str()) ;
-                        z3::expr Y =  z3_ctx().int_const(lconsts[j].to_string().c_str());
-                        z3::expr formula = phi_abs && (X!=Y);
+                        z3::expr formula = phi_abs;
+                        if (expr_tool::is_location(lconsts[i])) {
+                                z3::expr X = z3_ctx().int_const(lconsts[i].to_string().c_str()) ;
+                                z3::expr Y =  z3_ctx().int_const(lconsts[j].to_string().c_str());
+                                formula = formula && (X!=Y);
+                        } else {
+                                formula = formula && (lconsts[i] != lconsts[j]);
+                        }
                         sol.reset();
                         sol.add(formula);
+                        // logger() << "eq class formula: " << formula << std::endl;
+                        // logger() << "check sat: " << sol.check() << std::endl;
                         if(sol.check() == z3::unsat) {
                                 // X == Y
                                 if (lconst_class[i] != -1) {
@@ -449,12 +915,15 @@ void listsolver::get_eq_class(z3::expr &phi_abs, std::vector<z3::expr> &lconsts,
                                         eq_class.insert(j);
                                         eq_class_vec.push_back(eq_class);
                                 }
+                        } else {
+                                // logger() << "model: " << sol.get_model() << std::endl;
                         }
                 }
         }
 
         for (int i=0; i<lconsts.size(); i++) {
                 if (lconst_class[i] == -1) {
+                        lconst_class[i] = eq_class_vec.size();
                         eq_class.clear();
                         eq_class.insert(i);
                         eq_class_vec.push_back(eq_class);
@@ -750,9 +1219,9 @@ int listsolver::get_numeral(z3::expr x) {
  * @return      [the abstraction]
  */
 z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools){
-        logger() << "listsolver::pred2abs \n";
-        logger() << "atom: " << atom << std::endl;
-        logger() << "i: " << i << std::endl;
+        // logger() << "listsolver::pred2abs \n";
+        // logger() << "atom: " << atom << std::endl;
+        // logger() << "i: " << i << std::endl;
 
         std::string source = atom.arg(0).to_string();
         std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
@@ -772,9 +1241,12 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools)
                 int size = atom.num_args() - pred.size_of_static_parameters(); // size of source and destination paramaters
                 // 1.2 predicate atom
                 // 1.2.1 supposing atom is empty
+                std::string k_name = m_ctx.logger().string_format("[k,%d]", i);
+                z3::expr k_i_int = z3_ctx().int_const(k_name.c_str()); // k_i
+
                 z3::expr or_0(z3_ctx());
                 z3::expr dest_int = z3_ctx().int_const(atom.arg(size/2).to_string().c_str());
-                or_0 = !source_bool && (source_int == dest_int);
+                or_0 = !source_bool && (k_i_int == 0) && (source_int == dest_int);
                 for (int j=1; j<size/2;j++) {
                         if (atom.arg(j).get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
                                 z3::expr arg_j_int = z3_ctx().int_const(atom.arg(j).to_string().c_str());
@@ -785,7 +1257,7 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools)
                         }
                 }
 
-                logger() << "or_0: " << or_0 << std::endl;
+                // logger() << "or_0: " << or_0 << std::endl;
 
                 // 1.2.2 supposing atom is not emtpy
                 z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
@@ -802,12 +1274,11 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools)
                 }
                 z3::expr k_int = z3_ctx().int_const("k"); // k is in data closure
                 f_args.push_back(k_int);
-                std::string k_name = m_ctx.logger().string_format("[k,%d]", i);
-                z3::expr k_i_int = z3_ctx().int_const(k_name.c_str()); // k_i
+
                 a_args.push_back(k_i_int);
 
-                logger() <<"formal pars: " << f_args << std::endl;
-                logger() <<"actual pars: " << a_args << std::endl;
+                // logger() <<"formal pars: " << f_args << std::endl;
+                // logger() <<"actual pars: " << a_args << std::endl;
 
                 z3::expr or_1(z3_ctx()); // by ufld_1
                 z3::expr or_2(z3_ctx()); // by ufld_ge_2
@@ -827,24 +1298,24 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools)
 
                         // ufld_1
                         z3::expr ufld_1 = (source_int == beta_idx_int && k_int == 1 && phi_pd);
-                        logger() << "ufld_1: " << ufld_1 << std::endl;
+                        // logger() << "ufld_1: " << ufld_1 << std::endl;
                         or_1 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_1.substitute(f_args, a_args));
-                        logger() << "or_1: " << or_1 << std::endl;
+                        // logger() << "or_1: " << or_1 << std::endl;
                         // ufld_ge_2
                         z3::expr ufld_ge_2 = (source_int != beta_idx_int && k_int >= 2 && phi_pd);
                         or_2 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_ge_2.substitute(f_args, a_args));
-                        logger() << "or_2: " << or_2 << std::endl;
+                        // logger() << "or_2: " << or_2 << std::endl;
                 } else {
                         // E does not occur in gamma
                         // ufld_1
                         z3::expr ufld_1 = (k_int == 1 && phi_pd);
                         // std::cout << "ufld_1: " << ufld_1 << std::endl;
                         or_1 =  source_bool && source_int>0 && ufld_1.substitute(f_args, a_args);
-                        logger() << "or_1: " << or_1 << std::endl;
+                        // logger() << "or_1: " << or_1 << std::endl;
                         // ufld_ge_2
                         z3::expr ufld_ge_2 = (k_int >= 2 && phi_pd);
                         or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(f_args, a_args);
-                        logger() << "or_2: " << or_2 << std::endl;
+                        // logger() << "or_2: " << or_2 << std::endl;
                 }
 
                 // 1.3 or
@@ -1133,4 +1604,19 @@ void listsolver::write_pred_pto(z3::model& m, z3::model& data_m, z3::expr& pto, 
                 node_str +=  logger().string_format("|%s:(%s)",  flag_str.c_str(),  dest_interp.to_string().c_str());
         }
         node_str += "\"];\n";
+}
+
+
+void listsolver::init_int_vector(std::vector<int> &vec, int size) {
+        vec.clear();
+        for (int i=0; i<size; i++) {
+                vec.push_back(-1);
+        }
+}
+
+int listsolver::index_of_int(int x, std::vector<int> &vec) {
+        for (int i=0; i<vec.size(); i++) {
+                if (vec[i] == x) return i;
+        }
+        return -1;
 }

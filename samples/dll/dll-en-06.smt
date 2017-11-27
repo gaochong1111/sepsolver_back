@@ -76,8 +76,9 @@
 )
 
 ;; psi
-(assert  (tobool
+(assert (not (tobool
         (ldllseg E1 E1_prime x1 E3 E3_prime x3)
-))
+        ))
+)
 
 (check-sat)

@@ -17,8 +17,6 @@
 			(exists
 				((?X Ldll_t) (?x2 Int))
 				(and
-					;(<= ?x0 0)
-					; (>= ?x0 2)
 					(= ?x0 (+ ?x2 1))
 					(tobool
 						(ssep
@@ -45,6 +43,7 @@
 (declare-fun x1() Int)
 (declare-fun x2() Int)
 (declare-fun x3() Int)
+(declare-fun x4() Int)
 
 
 
@@ -52,9 +51,11 @@
 
 ;; phi
 (assert (and
+        (= E1 E2_p)
+        (= x1 (+ x2 1))
         (tobool
             (ssep
-                (ldllseg E1 E1_p x1 E2 E2_p x2)
+                (pto E1 (sref (ref next E2) (ref prev E1_p)))
                 (ldllseg E2 E2_p x2 E3 E3_p x3)
         )))
 )
@@ -67,4 +68,6 @@
         (ldllseg E1 E1_p x1 E3 E3_p x3)
      )))
 )
+
+
 (check-sat)

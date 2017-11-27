@@ -18,13 +18,32 @@ private:
         z3::expr m_posf;
 
 public:
+        // some aux info used by solver
+        z3::expr phi_space;
+        z3::expr psi_space;
+        std::vector<z3::expr> phi_const_vec;
+        std::vector<z3::expr> psi_const_vec;
+        std::vector<int> psi_eq_to_eq_table;
+        std::vector<int> phi_const_eq_class_vec;
+        std::vector<int> psi_const_eq_class_vec;
+public:
+
+
+
+smt2context(z3::context& ctx, std::string log_file, bool exit_err=true) :m_ctx(ctx),
+         m_exit_on_err(exit_err),
+                m_negf(ctx),
+                m_posf(ctx),
+                phi_space(ctx),
+                psi_space(ctx)
+        {
+                m_log.common_log_init(log_file);
+        }
+
         Log& logger() {return m_log;}
         z3::context& z3_context() {return m_ctx;}
         bool exit_on_error() {return m_exit_on_err;}
 
-smt2context(z3::context& ctx, std::string log_file, bool exit_err=true):m_ctx(ctx), m_exit_on_err(exit_err), m_negf(ctx), m_posf(ctx){
-                m_log.common_log_init(log_file);
-        }
 
         void add_predicate(predicate pred) {
                 m_preds.push_back(pred);
@@ -60,6 +79,7 @@ smt2context(z3::context& ctx, std::string log_file, bool exit_err=true):m_ctx(ct
         bool is_sat() ;
 
         bool is_entl() ;
+
 
 };
 

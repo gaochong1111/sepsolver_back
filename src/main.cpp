@@ -49,6 +49,8 @@ void test_scanner() {
 
 }
 
+
+
 void test_parser() {
         try {
                 fstream f(file_name);
@@ -65,28 +67,6 @@ void test_parser() {
                         parser.parse_cmd();
                 }
 
-
-                // z3::sort s = parser.parse_sort();
-                // std::cout << s << std::endl;
-                // parser.parse_expr();
-                // parser.parse_parameters();
-
-//                parser.next();
-//                parser.parse_cmd();
-//                std::cout << "curr: " << parser.curr() << std::endl;
-//                parser.next();
-//                parser.parse_cmd();
-
-                // parser();
-
-                /*
-                  smt2scanner::token t;
-                  while((t=scanner.scan()) != smt2scanner::token::EOF_TOKEN) {
-                  cout << "type: " << token_str[t] << endl;
-                  string token = scanner.get_string();
-                  cout << "May word: " << token << endl;
-                  }
-                */
         } catch(const smt2exception& e) {
                 cout << e.get_msg() << endl;
         }
@@ -95,10 +75,16 @@ void test_parser() {
 void test() {
         try {
                 fstream f(file_name);
+                // z3::config cfg;
+                // cfg.set("unsat_core", true);
                 z3::context ctx;
                 smt2context m_ctx(ctx, "log");
+
+
                 smt2parser parser(m_ctx, f);
                 parser();
+
+                //parse_example(ctx);
 
                 predicate pred = m_ctx.get_pred(0);
 
@@ -130,6 +116,7 @@ int main(int argc, char *argv[])
 
         // test_scanner();
         // test_parser();
+        // parse_example();
         test();
 
 

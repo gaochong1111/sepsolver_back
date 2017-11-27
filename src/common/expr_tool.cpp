@@ -26,7 +26,7 @@ void expr_tool::get_lvars(z3::expr exp, std::set<z3::expr, exprcomp> &lvar_set) 
 
 void expr_tool::get_consts(z3::expr exp, std::set<z3::expr, exprcomp> &const_set) {
         if (exp.is_app()) {
-                if (exp.is_const() && !exp.is_numeral() && !exp.is_array()) {
+                if (exp.is_const() && !is_constant(exp) && !exp.is_array()) {
                         const_set.insert(exp);
                 } else {
                         for (int i=0; i<exp.num_args(); i++) {
@@ -38,11 +38,23 @@ void expr_tool::get_consts(z3::expr exp, std::set<z3::expr, exprcomp> &const_set
 
 void expr_tool::get_lconsts(z3::expr exp, std::set<z3::expr, exprcomp> &lconst_set) {
         if (exp.is_app()) {
-                if (exp.is_const() && !exp.is_numeral() && exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
                         lconst_set.insert(exp);
                 } else {
                         for (int i=0; i<exp.num_args(); i++) {
                                 get_lconsts(exp.arg(i), lconst_set);
+                        }
+                }
+        }
+}
+
+void expr_tool::get_dconsts(z3::expr exp, std::set<z3::expr, exprcomp> &dconst_set) {
+        if (exp.is_app()) {
+                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && exp.get_sort().sort_kind() != Z3_UNINTERPRETED_SORT) {
+                        dconst_set.insert(exp);
+                } else {
+                        for (int i=0; i<exp.num_args(); i++) {
+                                get_dconsts(exp.arg(i), dconst_set);
                         }
                 }
         }
@@ -65,6 +77,19 @@ void expr_tool::get_constants(z3::expr exp, std::set<z3::expr, exprcomp> &consta
         }
 }
 
+
+void expr_tool::get_all_field_of_pto(z3::expr pto, std::vector<z3::expr> fields) {
+        if (is_fun(pto, "pto")) {
+                z3::expr sref = pto.arg(1);
+                if (is_fun(sref, "ref")) {
+                        fields.push_back(sref.arg(1));
+                } else {
+                        for (int i=0; i<sref.num_args(); i++) {
+                                fields.push_back(sref.arg(i).arg(1));
+                        }
+                }
+        }
+}
 
 void expr_tool::expr_set_to_vec(std::set<z3::expr, exprcomp> &expr_set, std::vector<z3::expr> &expr_vec) {
         for (auto e : expr_set) {
@@ -105,4 +130,20 @@ int expr_tool::index_of_exp(z3::expr exp, std::vector<z3::expr> &expr_vec) {
                 if (exp.hash() == expr_vec[i].hash()) return i;
         }
         return -1;
+}
+
+
+bool expr_tool::is_constant(z3::expr exp) {
+        if (exp.to_string() == "true" || exp.to_string()=="false" || exp.is_numeral()) return true;
+        return false;
+}
+
+bool expr_tool::is_fun(z3::expr expr, std::string fname) {
+        if (expr.is_app() && expr.decl().name().str() == fname) return true;
+        return false;
+}
+
+bool expr_tool::is_location(z3::expr exp) {
+        if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) return true;
+        return false;
 }
