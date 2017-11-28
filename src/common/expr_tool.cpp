@@ -147,3 +147,13 @@ bool expr_tool::is_location(z3::expr exp) {
         if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) return true;
         return false;
 }
+
+z3::expr expr_tool::eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2) {
+        if (is_location(exp1)) {
+                z3::expr exp1_int = ctx.int_const(exp1.to_string().c_str());
+                z3::expr exp2_int = ctx.int_const(exp2.to_string().c_str());
+                return exp1_int == exp2_int;
+        } else {
+                return exp1 == exp2;
+        }
+}

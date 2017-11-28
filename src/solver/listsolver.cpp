@@ -73,8 +73,6 @@ z3::check_result listsolver::check_entl() {
         // TODO ....
         logger() << "list entl problem:\n";
 
-
-
         z3::solver ss(z3_ctx());
         z3::expr f_abs = z3_ctx().bool_val(true);
         ss.add(f_abs);
@@ -114,6 +112,7 @@ z3::check_result listsolver::check_entl() {
         z3::expr_vector phi_new_bools(z3_ctx());
         z3::expr phi_space(z3_ctx());
         z3::expr phi_abs = get_abstraction(phi, phi_space, phi_new_bools);
+        m_ctx.phi_abs = phi_abs;
         m_ctx.phi_space = phi_space;
         ss.reset();
         ss.add(phi_abs);
@@ -124,6 +123,7 @@ z3::check_result listsolver::check_entl() {
         z3::expr_vector psi_new_bools(z3_ctx());
         z3::expr psi_space(z3_ctx());
         z3::expr psi_abs = get_abstraction(psi, psi_space, psi_new_bools);
+        m_ctx.psi_abs = psi_abs;
         m_ctx.psi_space = psi_space;
         ss.reset();
         ss.add(psi_abs);
@@ -219,6 +219,7 @@ z3::check_result listsolver::check_entl() {
                 // reset m_ctx.phi_const_eq_class_vec
                 // reset m_ctx.psi_eq_to_eq_table
 
+                m_ctx.phi_abs = omega_phi_abs_i;
                 m_ctx.phi_const_vec.clear(); // TODO. modify get_const_vec_and_eq_class
                 get_const_vec_and_eq_class(phi, omega_phi_abs_i, m_ctx.phi_const_vec, m_ctx.phi_const_eq_class_vec);
                 logger() << "eq_to_eq table: \n";
@@ -358,8 +359,9 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                 int dst = expr_tool::index_of_exp(psi_const_vec[edge.first.second], phi_const_vec);
                 src = omega_g_i.get_vertex_id(src);
                 dst = omega_g_i.get_vertex_id(dst);
+
+                // src and dst are in the same cc
                 int cc_id = omega_g_i.which_cc(src);
-                // check
                 if (cc_id != omega_g_i.which_cc(dst)) return false; // ?
 
                 std::vector<graph::edge_descriptor> path = omega_g_i.get_path(src, dst);
@@ -379,9 +381,12 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                         paths.push_back(omega_g_i.get_edge_property(path[j]));
                 }
 
+                // special case
+                if (paths.size()==0 && src!=dst) return false;
+
                 int edge_num = paths.size();
                 if (expr_tool::is_fun(psi_atom, "pto")) {
-                        // pto map pto
+                        // pto match pto
                         if (edge_num==1) {
                                 z3::expr omega_phi_atom = phi_space.arg(paths[0]);
                                 if (!expr_tool::is_fun(omega_phi_atom, "pto")) {
@@ -393,15 +398,16 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                                 return false;
                         }
                 } else{
-                        // match_pred (psi_atom, omega_phi_atom);
+                        // pred_atom match path
                         if (cc_cycle_num[cc_id] == 0) {
                                 // dag
+
                                 if(paths.size()>0 && !match_path_to_atom_space(paths, psi_atom)) return false;
                         } else {
-                                // dag_like one cycle
+                                // dag_like (each cc has at most one cycle)
                                 std::pair<int, int> coord(cc_id, 0);
                                 std::vector<int> cycle = omega_g_i.get_cycle(coord);
-                                // dst and last_src in cycle
+                                // whether dst and last_src are in cycle
                                 int last_src = omega_g_i.source(path[path.size()-1]);
                                 // match paths
                                 bool match_res1 = match_path_to_atom_space(paths, psi_atom);
@@ -412,8 +418,10 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                                 }
                                 bool match_res2 = match_path_to_atom_space(paths, psi_atom);
 
+                                logger() << "match_res1: " << match_res1 << ", match_res2: " << match_res2 << std::endl;
+
                                 if (index_of_int(dst, cycle) != -1 && index_of_int(last_src, cycle) == -1) {
-                                        // match
+                                        // dst in, last_src not in
                                         if (cc_cycle_table[cc_id].first != 2) {
                                                 if (match_res1 && match_res2) {
                                                         cc_cycle_table[cc_id].first = 1;
@@ -429,6 +437,7 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                                                 if (!match_res1) return false;
                                         }
                                 } else if(index_of_int(dst, cycle) != -1 && src==dst){
+                                        // dst in, last_src in, src == dst
                                         if (cc_cycle_table[cc_id].first != 2 && match_res2) {
                                                 cc_cycle_table[cc_id].first = 1;
                                                 cc_cycle_table[cc_id].second = i;
@@ -436,7 +445,7 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                                 } else {
                                         if (!match_res1) return false;
                                         if (index_of_int(dst, cycle) != -1) {
-                                                // F in cycle
+                                                // dst in cycle
                                                 cc_cycle_table[cc_id].first = 2;
                                         }
                                 }
@@ -466,8 +475,6 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
                 }
         }
 
-
-
         //
         logger() << "omega_edges_table: \n";
 
@@ -481,15 +488,31 @@ bool listsolver::match_graph(graph& g_psi, graph& omega_g_i) {
 
 bool listsolver::match_path_to_atom_space(std::vector<int> &paths, z3::expr &psi_atom) {
         // path match pred atom
-        if (paths.size() == 0) return true;
+        if (paths.size() == 0) {
+                // abs_omega_phi |= pred atom is empty
+                z3::expr entl_empty_f = m_ctx.phi_abs;
+                z3::expr eq_atom = z3_ctx().bool_val(true);
+                int st_size = m_ctx.get_pred(0).size_of_static_parameters();
+                int pars_size = psi_atom.num_args()-st_size;
+                for (int i=0; i<pars_size/2; i++) {
+                        eq_atom = eq_atom && expr_tool::eq_exp(z3_ctx(), psi_atom.arg(i), psi_atom.arg(i+pars_size/2));
+                }
+                entl_empty_f = entl_empty_f && !eq_atom;
+                z3::solver ss(z3_ctx());
+                ss.add(entl_empty_f);
+                if (ss.check() == z3::unsat) return true;
+                else return false;
+        }
         // 1. psi_pred_atom - extend by path
         z3::expr omega_f(z3_ctx());
         z3::expr atom_space(z3_ctx());
         // z3::expr_vector new_vars(z3_ctx());
         unfold_by_path(paths, psi_atom, omega_f);
         z3::expr omega_f_abs(z3_ctx());
-        z3::expr_vector new_bools(z3_ctx());
-        omega_f_abs = get_abstraction(omega_f, atom_space, new_bools);
+        // z3::expr_vector new_bools(z3_ctx());
+        get_data_space(omega_f, omega_f_abs, atom_space);
+        // omega_f_abs = get_abstraction(omega_f, atom_space, new_bools);
+        omega_f_abs = omega_f_abs && m_ctx.psi_abs;
         // logger() << "omega_f_abs: " << omega_f_abs <<std::endl;
         std::set<z3::expr, exprcomp> omega_const_set;
         expr_tool::get_consts(omega_f, omega_const_set);

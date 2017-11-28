@@ -53,9 +53,11 @@ define-fun slseg ((?E sls_t) (?d1 Int)  (?F sls_t) (?d2 Int) ) Space
 )
 
 (assert
+	(not
 	(and
 		(tobool
 			(slseg X a Z c)
+	)
 	)
 )
 )
