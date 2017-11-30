@@ -22,6 +22,7 @@ graph::graph(const graph& g)
 {
 	cc = g.cc;
 	cycle = g.cycle;
+	edge_cycle = g.edge_cycle;
 	adj_list = g.adj_list;
 }
 graph& graph::operator=(const graph& g)
@@ -30,12 +31,14 @@ graph& graph::operator=(const graph& g)
 		return *this;
 	cc = g.cc;
 	cycle = g.cycle;
+	edge_cycle = g.edge_cycle;
 	adj_list = g.adj_list;
 }
 graph::graph(graph&& g) noexcept
 {
 	cc = g.cc;
 	cycle = g.cycle;
+	edge_cycle = g.edge_cycle;
 	adj_list = g.adj_list;
 }
 graph& graph::operator=(graph&& g) noexcept
@@ -44,6 +47,7 @@ graph& graph::operator=(graph&& g) noexcept
 		return *this;
 	cc = g.cc;
 	cycle = g.cycle;
+	edge_cycle = g.edge_cycle;
 	adj_list = g.adj_list;
 }
 void graph::init(std::vector<std::set<int> >& eq_class_vec,  std::vector<std::pair<std::pair<int, int>, int> >& edge_vec)
@@ -75,54 +79,23 @@ void graph::init(std::vector<std::set<int> >& eq_class_vec,  std::vector<std::pa
 
 	seek_cc();
 	seek_cycle();
-}
-
-
-
-void graph::print_cc(std::vector<cc_t>& cc) {
-	std::cout << "size of cc:" << cc.size() << std::endl;
-	for (int i=0; i<cc.size(); i++) {
-		cc_t c = cc[i];
-		std::cout << "cc_" << i << ": [";
-		std::set<int>::iterator it=c.begin();
-		if (it != c.end()){
-			std::cout << *it;
-			++it;
-		}
-
-		for( ;it!=c.end(); ++it) {
-			std::cout <<", " << *it;
-		}
-		std::cout << "]\n";
-	}
-	std::cout << std::endl;
-}
-
-void graph::print_cc() {
-	print_cc(cc);
-}
-
-
-
-void graph::print_cyc() {
-	std::cout << "size of cycles: " << cycle.size() << "\n";
-
-	for (int i=0; i<cycle.size(); i++) {
-		cc_cycle_t cc_cycle = cycle[i];
+	/*
+	for (int i=0; i<edge_cycle.size(); i++) {
+		edge_cycles_t e_cycles = edge_cycle[i];
 		std::cout << "cc_" << i << ": [\n";
-		for (int j=0; j<cc_cycle.size(); j++) {
-			cycle_t cyc = cc_cycle[j];
-			std::cout << "cycle_" << j << ": [";
-			for (int k=0; k<cyc.size(); k++) {
-				std::cout << cyc[k] << ", ";
+		for (int j=0; j<e_cycles.size(); j++) {
+			edge_cycle_t e_cycle = e_cycles[j];
+			std::cout << "edge_cycle_" << j << ": [";
+			for (int k=0; k<e_cycle.size(); k++) {
+				edge_t edge = e_cycle[k];
+				std::cout << edge.first.first << "-->" << edge.first.second << " : " << edge.second << ", ";
 			}
 			std::cout << "]\n";
 		}
 		std::cout<< "]\n" << std::endl;
 	}
-
+	*/
 }
-
 
 
 
@@ -315,6 +288,7 @@ void graph::seek_cycle()
 	if (cycle.size()>0) cycle.clear();
 	size_t i, j;
 	std::vector<std::vector<int>> t;
+	edge_cycles_t e_cycles;
 	adjacency_list::out_edge_iterator it1, it2;
 	std::vector<int> c, t1, s;
 	std::map<int, bool> m;
@@ -325,6 +299,7 @@ void graph::seek_cycle()
 		for (j = 0; j < c.size(); ++j)
 			m[c[j]] = false;
 		t.clear();
+		e_cycles.clear();
 		for (j = 0; j < c.size(); ++j) {
 			if (m[c[j]])
 				continue;
@@ -340,6 +315,20 @@ void graph::seek_cycle()
 						if (it != end(s)) {
 							t1.insert(end(t1), it, end(s)); // it->...->end(s)->it
 							t.push_back(t1);
+							// add edge_cycle
+							edge_cycle_t e_cycle;
+							for (int idx=0; idx+1<t1.size(); idx++) {
+								edge_t edge;
+								edge.first.first = t1[idx];
+								edge.first.second = t1[idx+1];
+								edge.second = get_edge_property(t1[idx], t1[idx+1]);
+								e_cycle.push_back(edge);
+							}
+							std::pair<int,int> eg(k, tar);
+							edge_t edge(eg, adj_list[*it1]);
+							e_cycle.push_back(edge);
+							e_cycles.push_back(e_cycle);
+							t1.clear();
 						}
 					}
 					m[k] = true;
@@ -352,12 +341,13 @@ void graph::seek_cycle()
 						break;
 					}
 				}
-				if (it1 == it2)
+				if (it1 == it2){
 					s.pop_back();
-
+				}
 			}
 		}
 		cycle.push_back(t);
+		edge_cycle.push_back(e_cycles);
 	}
 }
 
@@ -450,6 +440,10 @@ std::vector<int> graph::get_cycle(const std::pair<int, int>& coord) const
 	return cycle[coord.first][coord.second];
 }
 
+std::vector<graph::edge_t> graph::get_edge_cycle(const std::pair<int, int>& coord) const {
+	return edge_cycle[coord.first][coord.second];
+}
+
 std::vector<graph::edge_descriptor> graph::merge_path(std::vector<graph::edge_descriptor>& path1, std::vector<graph::edge_descriptor>& path2)
 {
 	std::vector<edge_descriptor> res(path1);
@@ -509,8 +503,8 @@ std::vector<graph::edge_descriptor> graph::get_path(size_t u)
 
 std::vector<graph::edge_descriptor> graph::get_path(size_t u, size_t v) const
 {
-	assert(u != v);
 	std::vector<edge_descriptor> r;
+	if (u == v) return r;
 
 	int i = which_cc(u);
 	if (i != which_cc(v))

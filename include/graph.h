@@ -30,6 +30,9 @@ public:
 	typedef std::set<int> cc_t;
 	typedef std::vector<int> cycle_t;
 	typedef std::vector<cycle_t> cc_cycle_t;
+	typedef std::pair<std::pair<int, int>, int> edge_t;
+	typedef std::vector<edge_t> edge_cycle_t;
+	typedef std::vector<edge_cycle_t> edge_cycles_t;
 	typedef boost::graph_traits<adjacency_list>::edge_descriptor edge_descriptor;
 	typedef boost::graph_traits<adjacency_list>::edge_iterator edge_iterator;
 	typedef adjacency_list::out_edge_iterator out_edge_iterator;
@@ -62,6 +65,7 @@ public:
 
 	bool is_cycle(const std::pair<int, int>&) const;
 	std::vector<int> get_cycle(const std::pair<int, int>&) const;
+	std::vector<edge_t> get_edge_cycle(const std::pair<int, int>&) const;
 	std::vector<edge_descriptor> get_cycle_edge(std::pair<int, int>&);
 	std::vector<edge_descriptor> merge_path(std::vector<edge_descriptor>&, std::vector<int>&) const;
 	std::vector<edge_descriptor> merge_path(std::vector<edge_descriptor>&, std::vector<edge_descriptor>&);
@@ -69,13 +73,10 @@ public:
 
 	void seek_cc();
 	void seek_cycle();
-	void print_cc(std::vector<cc_t>&);
 
 public:
 	void print();
 	void print(std::vector<z3::expr>& lconsts, z3::expr& space, std::string file_name="graph.dot");
-	void print_cc();
-	void print_cyc();
 	void get_edges(std::vector<std::pair<std::pair<int, int>, int> >& edge_vec);
 	size_t get_vertex_id(size_t);
 	size_t source(edge_descriptor);
@@ -91,6 +92,8 @@ private:
 
 	std::vector<cc_t> cc;
 	std::vector<cc_cycle_t> cycle;
+	std::vector<edge_cycles_t> edge_cycle;
+
 public:
 	adjacency_list adj_list;
 
