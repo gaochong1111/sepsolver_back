@@ -16,14 +16,13 @@
 	(and (= ?E ?F) (= ?P ?L)
 		(tobool emp
 		)
-
 	)
  
-	(exists ((?u Dll_t)) 
+	(exists ((?X Dll_t)) 
 	(and 
 		(tobool (ssep 
-		(pto ?E (sref (ref next ?u) (ref prev ?P) ) ) 
-		(dll ?u ?E ?F ?L)
+		(pto ?E (sref (ref next ?X) (ref prev ?P) ) ) 
+		(dll ?X ?E ?F ?L)
 		) )
 
 	)
@@ -39,14 +38,18 @@
 (declare-fun y_emp () Dll_t)
 (declare-fun z_emp () Dll_t)
 
+;(declare-fun n1 () Int)
+;(declare-fun n2 () Int)
+
 
 
 (assert 
-	(and (distinct x_emp w_emp) 
+	(and 
 	(tobool 
 	(ssep 
 		(pto x_emp (sref (ref next w_emp) (ref prev nil) ) ) 
-	 	(dll w_emp x_emp z_emp y_emp )
+		(pto w_emp (sref (ref next y_emp) (ref prev x_emp) ) ) 
+		(pto y_emp (sref (ref next z_emp) (ref prev w_emp) ) ) 
 	)
 
 	)
@@ -57,9 +60,9 @@
 
 (assert (not 
 	(tobool 
-	 		(dll x_emp nil z_emp y_emp )
+	        (dll x_emp nil z_emp y_emp )
 	)
-
-))
+)
+)
 
 (check-sat)

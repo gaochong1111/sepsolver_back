@@ -77,9 +77,9 @@
 (assert
 	(and
         (= x4 x5)
-        ;(= x1 y4)
-        ;(= x3 y3)
-        ;(= x1 y5)
+        (= x4 y4)
+        (= x3 y3)
+        (= x5 y5)
 		(tobool
 		(ssep   (ldllseg E1 F1 x1 E3 F3 x3)
 		     (ldllseg E2 F2 x2 E4 F4 x4)
@@ -97,7 +97,7 @@
 (assert
 	(not
 		(and
-			(= E1 E2)
+			; (= E1 E2)
 			(tobool
 				(ssep  (ldllseg E1 F1 x1 E3 F3 x3)
 					   (ldllseg E2 F2 x2 E6 F6 x6)

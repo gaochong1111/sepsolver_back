@@ -64,30 +64,6 @@
 	)
 )
 
-(define-fun dllseg
-	((?E Ldll_t)(?P Ldll_t) (?F Ldll_t)(?L Ldll_t)) Space
-	(tospace
-		 (or
-			(and (= ?E ?F) (= ?P ?L)
-			(tobool emp
-			)
-			)			
-			(exists
-				((?X Ldll_t))
-				(and
-					;(>= ?x0 5)
-					;(= ?x0 (+ ?x2 1))
-					(tobool
-						(ssep
-							(pto ?E (sref (ref next ?X) (ref prev ?P) ))
-							(dllseg ?X ?E ?F ?L)
-						)
-					)
-				)
-			)
-		)
-	)
-)
 
 
 (declare-fun E1() Ldll_t)

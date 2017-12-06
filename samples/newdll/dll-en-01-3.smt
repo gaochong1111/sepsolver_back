@@ -7,7 +7,7 @@
 (declare-fun data() (Field Ldll_t Int))
 
 
-(define-fun ldllseg
+(define-fun sdllseg
 	((?E Ldll_t) (?P Ldll_t) (?x0 Int) (?F Ldll_t) (?L Ldll_t) (?x1 Int)) Space
 	(tospace
 		 (or
@@ -22,12 +22,12 @@
 				((?X Ldll_t) (?x2 Int))
 				(and
 					;(>= ?x0 5)
-					(= ?x0 (+ ?x2 1))
+					(<= ?x0 (+ ?x2 0))
 					;(<= ?y0 ?y2)
 					(tobool
 						(ssep
-							(pto ?E (sref (ref next ?X) (ref prev ?P) ))
-							(ldllseg ?X ?E ?x2 ?F ?L ?x1)
+							(pto ?E (sref (ref next ?X) (ref prev ?P)(ref data ?x0) ))
+							(sdllseg ?X ?E ?x2 ?F ?L ?x1)
 						)
 					)
 				)
@@ -77,17 +77,17 @@
 (assert
 	(and
         (= x4 x5)
-        ;(= x1 y4)
-        ;(= x3 y3)
-        ;(= x1 y5)
+        (= x4 y4)
+        (= x3 y3)
+        (= x5 y5)
 		(tobool
-		(ssep   (ldllseg E1 F1 x1 E3 F3 x3)
-		     (ldllseg E2 F2 x2 E4 F4 x4)
-			 (ldllseg E3 F3 x3 E4 F4 x4)
-			 (ldllseg E4 F4 y4 E3 F3 y3)
-			 (ldllseg E3 F3 x3 E5 F5 x5)
-			 (ldllseg E5 F5 y5 E3 F3 y3)
-			 (ldllseg E4 F4 x5 E6 F6 x6)
+		(ssep   (sdllseg E1 F1 x1 E3 F3 x3)
+		     (sdllseg E2 F2 x2 E4 F4 x4)
+			 (sdllseg E3 F3 x3 E4 F4 x4)
+			 (sdllseg E4 F4 y4 E3 F3 y3)
+			 (sdllseg E3 F3 x3 E5 F5 x5)
+			 (sdllseg E5 F5 y5 E3 F3 y3)
+			 (sdllseg E4 F4 x5 E6 F6 x6)
 		) 
 		)
 	)
@@ -97,10 +97,10 @@
 (assert
 	(not
 		(and
-			(= E1 E2)
+			; (= E1 E2)
 			(tobool
-				(ssep  (ldllseg E1 F1 x1 E3 F3 x3)
-					   (ldllseg E2 F2 x2 E6 F6 x6)
+				(ssep  (sdllseg E1 F1 x1 E3 F3 x3)
+					   (sdllseg E2 F2 x2 E6 F6 x6)
 				)
 			)
 		)

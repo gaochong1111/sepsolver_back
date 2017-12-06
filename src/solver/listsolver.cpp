@@ -147,7 +147,8 @@ z3::check_result listsolver::check_entl() {
         z3::check_result entl_abs_res = s1.check();
         // std::cout << "entl abs result: " << entl_abs_res << std::endl;
         logger() << "\nphi_abs entl forall psi_abs result: " << entl_abs_res << std::endl;
-        if (entl_abs_res == z3::sat) return z3::unsat;
+        if (entl_abs_res == z3::sat) { std::cout <<s1.get_model(); return z3::unsat; }
+
 
         // logger() << "model: " << ss.get_model() << std::endl;
         // if (pep_res == z3::sat || pep_res == z3::unknown) return z3::unsat; // if sat return unsat
@@ -175,7 +176,6 @@ z3::check_result listsolver::check_entl() {
         g_phi.print(m_ctx.phi_const_vec, m_ctx.phi_space, "g_phi.dot");
         construct_graph(psi_abs, m_ctx.psi_const_vec, m_ctx.psi_space, g_psi);
         g_psi.print(m_ctx.psi_const_vec, m_ctx.psi_space, "g_psi.dot");
-
 
         // 1.5 allocating plans
         std::vector<int> cc_cycle_num = g_phi.get_cc_cycle_num();

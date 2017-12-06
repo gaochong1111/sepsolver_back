@@ -32,7 +32,6 @@
 
 	)
 ))
-
 ;; declare variables
 (declare-fun x_emp () Dll_t)
 (declare-fun w_emp () Dll_t)
@@ -40,15 +39,12 @@
 (declare-fun z_emp () Dll_t)
 
 
-
 (assert 
-	(and (distinct x_emp w_emp) 
 	(tobool 
 	(ssep 
 		(pto x_emp (sref (ref next w_emp) (ref prev nil) ) ) 
-	 	(dll w_emp x_emp z_emp y_emp )
-	)
-
+	    (dll w_emp x_emp z_emp y_emp )
+		(pto y_emp (ref next z_emp) ) 
 	)
 
 	)
@@ -57,7 +53,7 @@
 
 (assert (not 
 	(tobool 
-	 		(dll x_emp nil z_emp y_emp )
+	        (dll x_emp y_emp nil z_emp )
 	)
 
 ))
