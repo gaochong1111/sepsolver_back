@@ -38,6 +38,7 @@ public:
         static bool is_constant(z3::expr exp);
         static bool is_fun(z3::expr expr, std::string fname);
         static bool is_location(z3::expr exp);
+        static bool is_setint(z3::expr exp);
 
         static z3::expr eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2);
 

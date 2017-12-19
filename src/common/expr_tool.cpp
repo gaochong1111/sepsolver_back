@@ -18,7 +18,7 @@ void expr_tool::get_lvars(z3::expr exp, std::set<z3::expr, exprcomp> &lvar_set) 
                         get_lvars(exp.arg(i), lvar_set);
                 }
         } else {
-                if (exp.is_var() && exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+                if (exp.is_var() && is_location(exp)) {
                        lvar_set.insert(exp);
                 }
         }
@@ -38,7 +38,7 @@ void expr_tool::get_consts(z3::expr exp, std::set<z3::expr, exprcomp> &const_set
 
 void expr_tool::get_lconsts(z3::expr exp, std::set<z3::expr, exprcomp> &lconst_set) {
         if (exp.is_app()) {
-                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) {
+                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && is_location(exp)) {
                         lconst_set.insert(exp);
                 } else {
                         for (int i=0; i<exp.num_args(); i++) {
@@ -50,7 +50,7 @@ void expr_tool::get_lconsts(z3::expr exp, std::set<z3::expr, exprcomp> &lconst_s
 
 void expr_tool::get_dconsts(z3::expr exp, std::set<z3::expr, exprcomp> &dconst_set) {
         if (exp.is_app()) {
-                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && exp.get_sort().sort_kind() != Z3_UNINTERPRETED_SORT) {
+                if (exp.is_const() && !is_constant(exp) && !exp.is_array() && !is_location(exp)) {
                         dconst_set.insert(exp);
                 } else {
                         for (int i=0; i<exp.num_args(); i++) {
@@ -144,7 +144,12 @@ bool expr_tool::is_fun(z3::expr expr, std::string fname) {
 }
 
 bool expr_tool::is_location(z3::expr exp) {
-        if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT) return true;
+        if (exp.get_sort().sort_kind() == Z3_UNINTERPRETED_SORT && !is_setint(exp)) return true;
+        return false;
+}
+
+bool expr_tool::is_setint(z3::expr exp) {
+        if (exp.get_sort().to_string() == "SetInt") return true;
         return false;
 }
 

@@ -1165,33 +1165,19 @@ void smt2parser::parse_define_fun() {
         next();
         check_rparen("invalid define-fun, excepted ')'");
 
-
-
         z3::expr body = m_expr_stack.back();
 
         m_expr_stack.pop_back();
 
-
-
-
         // new predicate
         // args, base_rule, rec_rules
         z3::expr null(z3_ctx());
-
         predicate pred(fun, args, null);
-
-
         check_pred(body, pred);
-
-
-
 
         m_ctx.add_predicate(pred);
 
-
-
-        // std::cout << pred << std::endl;
-
+        std::cout << pred << std::endl;
 
         m_sorted_var_stack.erase(m_sorted_var_stack.begin()+spos, m_sorted_var_stack.end());
         m_var_frame_stack.pop_back();
@@ -1212,8 +1198,9 @@ void smt2parser::parse_assert() {
 
         //
         z3::expr formula = m_expr_stack.back();
-        if (m_ctx.is_no_formula()) m_ctx.set_negf(formula);
-        else if (m_ctx.is_sat()) {
+        if (m_ctx.is_no_formula()){
+                m_ctx.set_negf(formula);
+        } else if (m_ctx.is_sat()) {
                 if (formula.decl().name().str() != "not") {
                         std::string info = "invalid assert, the second formula must be negative.";
                         throw smt2exception(info, line(),  pos());
@@ -1242,9 +1229,6 @@ void smt2parser::parse_check_sat() {
 
         next();
         check_rparen("invalid check-sat, excepted ')'");
-
-
-
 
         // logger() << "solve the sat ...\n";
         if (sol == NULL) {
@@ -1382,6 +1366,9 @@ void smt2parser::init_theory() {
         z3::symbol space_sym = z3_ctx().str_symbol("Space");
         z3::sort SP =  z3_ctx().uninterpreted_sort("Space");
 
+        z3::symbol set_int_sym = z3_ctx().str_symbol("SetInt");
+        z3::sort set_int = z3_ctx().uninterpreted_sort("SetInt");
+
         // insert builtin sort
         m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(bool_sym, std::pair<z3::sort, unsigned>(B, 0)));
         m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(int_sym, std::pair<z3::sort, unsigned>(I, 0)));
@@ -1390,22 +1377,61 @@ void smt2parser::init_theory() {
         m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(field_sym, std::pair<z3::sort, unsigned>(F, 2)));
         m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(set_ref_sym, std::pair<z3::sort, unsigned>(S, 1)));
         m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(space_sym, std::pair<z3::sort, unsigned>(SP, 0)));
+        m_builtin_sort_table.insert(std::pair<z3::symbol, std::pair<z3::sort, unsigned> >(set_int_sym, std::pair<z3::sort, unsigned>(set_int, 0)));
 
         // built-in funs
 
         z3::func_decl true_f = z3_ctx().function("true", 0, 0, B);
         z3::symbol true_s =  z3_ctx().str_symbol("true");
+
         z3::func_decl false_f = z3_ctx().function("false", 0, 0, B);
         z3::symbol false_s =  z3_ctx().str_symbol("false");
+
         z3::func_decl emp_f = z3_ctx().function("emp", 0, 0, B);
         z3::symbol emp_s =  z3_ctx().str_symbol("emp");
+
         z3::func_decl nil_f = z3_ctx().function("nil", 0, 0, V);
         z3::symbol nil_s =  z3_ctx().str_symbol("nil");
-        z3::symbol tobool_s = z3_ctx().str_symbol("tobool");
+
         z3::func_decl tobool_f = z3_ctx().function("tobool", SP, B);
+        z3::symbol tobool_s = z3_ctx().str_symbol("tobool");
 
         z3::symbol tospace_s = z3_ctx().str_symbol("tospace");
         z3::func_decl tospace_f = z3_ctx().function("tospace", B, SP);
+
+        z3::func_decl emptyset = z3_ctx().function("emptyset", 0, 0, set_int);
+        z3::symbol emptyset_s = z3_ctx().str_symbol("emptyset");
+
+        z3::func_decl set = z3_ctx().function("set", I, set_int);
+        z3::symbol set_s = z3_ctx().str_symbol("set");
+
+        z3::func_decl setunion = z3_ctx().function("setunion", set_int, set_int, set_int);
+        z3::symbol setunion_s = z3_ctx().str_symbol("setunion");
+
+        z3::func_decl setintersect = z3_ctx().function("setintersect", set_int, set_int, set_int);
+        z3::symbol setintersect_s = z3_ctx().str_symbol("setintersect");
+
+        z3::func_decl setminus = z3_ctx().function("setminus", set_int, set_int, set_int);
+        z3::symbol setminus_s = z3_ctx().str_symbol("setminus");
+
+        z3::func_decl subset = z3_ctx().function("subset", set_int, set_int, B);
+        z3::symbol subset_s = z3_ctx().str_symbol("subset");
+
+        z3::func_decl psubset = z3_ctx().function("psubset", set_int, set_int, B);
+        z3::symbol psubset_s = z3_ctx().str_symbol("psubset");
+
+        z3::func_decl equalset = z3_ctx().function("equalset", set_int, set_int, B);
+        z3::symbol equalset_s = z3_ctx().str_symbol("equalset");
+
+        z3::func_decl belongsto = z3_ctx().function("belongsto", I, set_int, B);
+        z3::symbol belongsto_s = z3_ctx().str_symbol("belongsto");
+
+        z3::func_decl min = z3_ctx().function("min", set_int, I);
+        z3::symbol min_s = z3_ctx().str_symbol("min");
+
+        z3::func_decl max = z3_ctx().function("max", set_int, I);
+        z3::symbol max_s = z3_ctx().str_symbol("max");
+
 
         m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(true_s, true_f));
         m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(false_s, false_f));
@@ -1413,6 +1439,18 @@ void smt2parser::init_theory() {
         m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(nil_s, nil_f));
         m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(tospace_s, tospace_f));
         m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(tobool_s, tobool_f));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(emptyset_s, emptyset));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(set_s, set));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(setunion_s, setunion));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(setintersect_s, setintersect));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(setminus_s, setminus));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(subset_s, subset));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(psubset_s, psubset));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(equalset_s, equalset));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(belongsto_s, belongsto));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(min_s, min));
+        m_builtin_func_table.insert(std::pair<z3::symbol, z3::func_decl>(max_s, max));
+
 }
 
 
@@ -1421,50 +1459,17 @@ smt2parser::smt2parser(smt2context & ctx, std::istream & is):
         sol(0),
         m_scanner(ctx, is),
         m_curr(smt2scanner::NULL_TOKEN),
-        //   m_curr_cmd(0),
-        // m_num_bindings(0),
-        // m_let(ctx.z3_context().str_symbol("let")),
-        // m_bang(ctx.z3_context().str_symbol("!")),
-        // m_forall(ctx.z3_context().str_symbol("forall")),
         m_exists(ctx.z3_context().str_symbol("exists")),
-        // m_as(ctx.z3_context().str_symbol("as")),
-        // m_not(ctx.z3_context().str_symbol("not")),
-        // m_root_obj(ctx.z3_context().str_symbol("root-obj")),
-        // m_named(ctx.z3_context().str_symbol(":named")),
-        // m_weight(ctx.z3_context().str_symbol(":weight")),
-        // m_qid(ctx.z3_context().str_symbol(":qid")),
-        // m_skid(ctx.z3_context().str_symbol(":skolemid")),
-        // m_ex_act(ctx.z3_context().str_symbol(":ex-act")),
-        // m_pattern(ctx.z3_context().str_symbol(":pattern")),
-        // m_nopattern(ctx.z3_context().str_symbol(":no-pattern")),
-        // m_lblneg(ctx.z3_context().str_symbol(":lblneg")),
-        // m_lblpos(ctx.z3_context().str_symbol(":lblpos")),
         m_assert(ctx.z3_context().str_symbol("assert")),
         m_check_sat(ctx.z3_context().str_symbol("check-sat")),
         m_get_model(ctx.z3_context().str_symbol("get-model")),
         m_define_fun(ctx.z3_context().str_symbol("define-fun")),
-        // m_define_const(ctx.z3_context().str_symbol("define-const")),
         m_declare_fun(ctx.z3_context().str_symbol("declare-fun")),
-        // m_declare_const(ctx.z3_context().str_symbol("declare-const")),
-        // m_define_sort(ctx.z3_context().str_symbol("define-sort")),
         m_declare_sort(ctx.z3_context().str_symbol("declare-sort")),
-        // m_declare_datatypes(ctx.z3_context().str_symbol("declare-datatypes")),
-        // m_declare_datatype(ctx.z3_context().str_symbol("declare-datatype")),
-        // m_par(ctx.z3_context().str_symbol("par")),
-        // m_push(ctx.z3_context().str_symbol("push")),
-        // m_pop(ctx.z3_context().str_symbol("pop")),
-        // m_get_value(ctx.z3_context().str_symbol("get-value")),
-        // m_reset(ctx.z3_context().str_symbol("reset")),
-        // m_check_sat_assuming(ctx.z3_context().str_symbol("check-sat-assuming")),
-        // m_define_fun_rec(ctx.z3_context().str_symbol("define-fun-rec")),
-        // m_define_funs_rec(ctx.z3_context().str_symbol("define-funs-rec")),
         m_set_logic(ctx.z3_context().str_symbol("set-logic")),
-        //m_underscore(ctx.z3_context().str_symbol("_")),
         m_num_open_paren(0)
 {
         init_theory();
-
-        // updt_params();
 }
 
 smt2parser::~smt2parser() {

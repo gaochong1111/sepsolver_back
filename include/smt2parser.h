@@ -59,8 +59,6 @@ public:
         local(z3::expr t, unsigned l):m_term(t), m_level(l) {}
         };
 
-        // std::map<z3::symbol, local> m_symbol_var_table;
-        // std::map<z3::symbol, z3::func_decl> m_symbol_func_table; //
         std::map<z3::symbol, std::vector<z3::expr>> m_sort_fields_table; // srot -> fields
         std::map<z3::symbol, z3::func_decl> m_builtin_func_table;
         std::map<z3::symbol, std::pair<z3::sort, unsigned> > m_builtin_sort_table;
@@ -80,48 +78,15 @@ public:
         unsigned m_num_bindings;
 
 
-//        std::vector<sexpr*> m_sexpr_stack;
-//        std::vector<int> m_sexpr_frame_stack;
 
-
-        // z3::symbol               m_let;
-        // z3::symbol               m_bang;
-        // z3::symbol               m_forall;
         z3::symbol               m_exists;
-        // z3::symbol               m_as;
-        // z3::symbol               m_not;
-        // z3::symbol               m_root_obj;
-
-        // z3::symbol               m_named;
-        // z3::symbol               m_weight;
-        // z3::symbol               m_qid;
-        // z3::symbol               m_skid;
-        // z3::symbol               m_ex_act;
-        // z3::symbol               m_pattern;
-        // z3::symbol               m_nopattern;
-        // z3::symbol               m_lblneg;
-        // z3::symbol               m_lblpos;
 
         z3::symbol               m_assert;
         z3::symbol               m_check_sat;
         z3::symbol               m_get_model;
         z3::symbol               m_define_fun;
-        // z3::symbol               m_define_const;
         z3::symbol               m_declare_fun;
-        // z3::symbol               m_declare_const;
-        // z3::symbol               m_define_sort;
         z3::symbol               m_declare_sort;
-        // z3::symbol               m_declare_datatypes;
-        // z3::symbol               m_declare_datatype;
-        // z3::symbol               m_par;
-        // z3::symbol               m_push;
-        // z3::symbol               m_pop;
-        // z3::symbol               m_get_value;
-        // z3::symbol               m_reset;
-        // z3::symbol               m_check_sat_assuming;
-        // z3::symbol               m_define_fun_rec;
-        // z3::symbol               m_define_funs_rec;
-        // z3::symbol               m_underscore;
         z3::symbol               m_set_logic;
 
 
