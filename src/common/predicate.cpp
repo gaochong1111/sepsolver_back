@@ -11,6 +11,14 @@ bool predicate::is_list() {
         return m_rec_rules.size() == 1 && m_rec_rules[0].is_list_rule();
 }
 
+bool predicate::is_listset() {
+        if (m_rec_rules.size() != 1) return false;
+        for (int i=0; i<m_pars.size()-1; i++) {
+                if (expr_tool::is_setint(m_pars[i])) return true;
+        }
+        return false;
+}
+
 std::ostream& operator<<(std::ostream& out, predicate& p) {
         out << "pars: \n" << p.m_pars << std::endl;
         out << "base rule: \n" << p.m_base_rule << std::endl;

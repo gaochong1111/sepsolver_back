@@ -77,6 +77,8 @@ smt2context(z3::context& ctx, std::string log_file, bool exit_err=true) :m_ctx(c
 
         bool is_list();
 
+        bool is_listset();
+
 
         bool is_no_formula() ;
 

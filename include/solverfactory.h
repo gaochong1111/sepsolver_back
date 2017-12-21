@@ -3,6 +3,7 @@
 #include "solver.h"
 #include "listsolver.h"
 #include "treesolver.h"
+#include "listsetsolver.h"
 #include "smt2context.h"
 
 class solverfactory {
@@ -13,13 +14,16 @@ public:
                         std::cout << "tree solver.\n";
                         //  treesolver sol(ctx);
                         return new treesolver(ctx);
+                } else if (ctx.is_listset()) {
+                        std::cout << "list with set solver.\n";
+                        return new listsetsolver(ctx);
                 } else if (ctx.is_list()) {
                         //TODO: solve the list predicate case
                         std::cout << "list solver.\n";
                         // listsolver sol(ctx);
                         //sol.solve();
                         return new listsolver(ctx);
-                } else {
+                }  else {
                         std::cout << "unsupported. \n";
                         return NULL;
                 }

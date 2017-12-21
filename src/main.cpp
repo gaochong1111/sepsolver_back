@@ -27,7 +27,7 @@ void test() {
                 smt2context m_ctx(ctx, "log");
                 smt2parser parser(m_ctx, f);
                 parser();
-                std::cout << "formula: " << m_ctx.get_negf() << std::endl;
+                // std::cout << "formula: " << m_ctx.get_negf() << std::endl;
         } catch(const smt2exception& e) {
                 cout << e.get_msg() << endl;
         }

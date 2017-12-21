@@ -16,6 +16,14 @@ bool smt2context::is_list() {
         return true;
 }
 
+bool smt2context::is_listset() {
+        for (int i=0; i<m_preds.size(); i++) {
+                if (m_preds[i].is_listset()) return true;
+        }
+
+        return expr_tool::contain_setint(m_negf);
+}
+
 predicate smt2context::get_pred(int index) {
         assert(index < m_preds.size());
         return m_preds[index];

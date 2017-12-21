@@ -153,6 +153,18 @@ bool expr_tool::is_setint(z3::expr exp) {
         return false;
 }
 
+bool expr_tool::contain_setint(z3::expr exp) {
+        if (exp.is_app()) {
+                if (is_setint(exp)) return true;
+                bool flag = false;
+                for (int i=0; i<exp.num_args(); i++) {
+                        flag = flag || contain_setint(exp.arg(i));
+                }
+                return flag;
+        }
+        return false;
+}
+
 z3::expr expr_tool::eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2) {
         if (is_location(exp1)) {
                 z3::expr exp1_int = ctx.int_const(exp1.to_string().c_str());

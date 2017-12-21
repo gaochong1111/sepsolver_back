@@ -43,6 +43,7 @@ public:
         z3::check_result check_entl();
         z3::expr pred2abs(z3::expr& atom, int i, z3::expr_vector& new_bools);
         std::string get_model_of_atom(z3::model& m, z3::expr& atom, int i, int n);
+        z3::model get_model() {}
 };
 
 

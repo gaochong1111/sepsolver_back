@@ -1177,7 +1177,7 @@ void smt2parser::parse_define_fun() {
 
         m_ctx.add_predicate(pred);
 
-        std::cout << pred << std::endl;
+        // std::cout << pred << std::endl;
 
         m_sorted_var_stack.erase(m_sorted_var_stack.begin()+spos, m_sorted_var_stack.end());
         m_var_frame_stack.pop_back();

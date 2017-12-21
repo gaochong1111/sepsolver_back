@@ -2,6 +2,8 @@
 
 (declare-sort Sls_t 0)
 (declare-fun next() (Field Sls_t Sls_t))
+(declare-fun data() (Field Sls_t Int))
+
 
 (define-fun sls ((?E Sls_t) (?S SetInt) (?F Sls_t) (?S1 SetInt)) Space
     (tospace
@@ -10,9 +12,13 @@
 
             (exists ((?X Sls_t) (?S2 SetInt))
                     (and (= ?S (setunion ?S2 (set (min ?S))))
-                         (= (min ?S2) (+ (min ?S) 1))
+                         (< (min ?S2) (+ (min ?S) 1))
+                         (> (min ?S2) (+ (min ?S) 1))
+
+                        ; (<= (min ?S2) (- (min ?S) 2))
+                        ; (> (min ?S2) (min ?S))
                          (tobool (ssep
-                                 (pto ?E (ref next ?X))
+                                 (pto ?E (sref (ref next ?X) (ref data min(?S))))
                                  (sls ?X ?S2 ?F ?S1)
                          ))
                     )
@@ -25,8 +31,20 @@
 (declare-fun S1() SetInt)
 (declare-fun S2() SetInt)
 
-(assert ( <=
+(declare-fun E() Sls_t)
+(declare-fun F() Sls_t)
+
+(assert (and
+        (<=
           (max (setunion S1 S2))
           (+ (min S1) 2)
         )
+        (subset S1 S2)
+        (tobool
+            (sls E S1 F S2)
+        )
 )
+
+)
+
+(check-sat)
