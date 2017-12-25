@@ -174,3 +174,69 @@ z3::expr expr_tool::eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2) {
                 return exp1 == exp2;
         }
 }
+
+/**
+ * make min(exp) or max(exp)
+ * @param mm : 0 min,  1 max
+ */
+z3::expr expr_tool::mk_min_max(z3::context& ctx, int mm, z3::expr exp) {
+        if(exp.get_sort().to_string() == "SetInt") {
+                z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+                z3::sort int_s = ctx.int_sort();
+                std::string name = "min";
+                if (mm&1) name = "max";
+                z3::func_decl f = ctx.function(name.c_str(), set_int_s, int_s);
+                return f(exp);
+        }
+        return ctx.int_val(-1); // error
+}
+
+z3::expr expr_tool::mk_emptyset(z3::context &ctx) {
+        z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+        return ctx.constant("emptyset", set_int_s);
+}
+
+z3::expr expr_tool::mk_set_var(z3::context &ctx, std::string name) {
+        z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+        return ctx.constant(name.c_str(), set_int_s);
+}
+
+z3::expr expr_tool::mk_binary_set(z3::context &ctx, std::string name, z3::expr s1, z3::expr s2) {
+        if (s1.get_sort().to_string() == "SetInt" && s2.get_sort().to_string() == "SetInt") {
+                z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+                z3::func_decl f = ctx.function(name.c_str(), set_int_s, set_int_s, set_int_s);
+                return f(s1, s2);
+        }
+        return ctx.bool_val(false);
+}
+
+z3::expr expr_tool::mk_binary_bool(z3::context &ctx, std::string name, z3::expr s1, z3::expr s2) {
+        if (s1.get_sort().to_string() == "SetInt" && s2.get_sort().to_string() == "SetInt") {
+                z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+                z3::sort bool_s = ctx.bool_sort();
+                z3::func_decl f = ctx.function(name.c_str(), set_int_s, set_int_s, bool_s);
+                return f(s1, s2);
+        }
+        return ctx.bool_val(false);
+}
+
+z3::expr expr_tool::mk_belongsto(z3::context &ctx, z3::expr x, z3::expr S) {
+        if (x.get_sort().to_string() == "Int" && S.get_sort().to_string() == "SetInt") {
+                z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+                z3::sort bool_s = ctx.bool_sort();
+                z3::sort int_s = ctx.int_sort();
+                z3::func_decl f = ctx.function("belongsto", int_s, set_int_s, bool_s);
+                return f(x, S);
+        }
+        return ctx.bool_val(false);
+}
+
+z3::expr expr_tool::mk_single_set(z3::context &ctx, z3::expr x) {
+        if (x.get_sort().to_string() == "Int") {
+                z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
+                z3::sort int_s = ctx.int_sort();
+                z3::func_decl f = ctx.function("set", int_s, set_int_s);
+                return f(x);
+        }
+        return mk_emptyset(ctx);
+}

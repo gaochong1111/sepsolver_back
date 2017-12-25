@@ -42,6 +42,17 @@ public:
         static bool contain_setint(z3::expr exp);
 
         static z3::expr eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2);
+        static z3::expr mk_min_max(z3::context& ctx, int mm, z3::expr exp);
+
+        static z3::expr mk_emptyset(z3::context& ctx);
+        static z3::expr mk_set_var(z3::context& ctx, std::string name);
+        static z3::expr mk_binary_set(z3::context& ctx, std::string name, z3::expr s1, z3::expr s2);
+        static z3::expr mk_binary_bool(z3::context& ctx, std::string name, z3::expr s1, z3::expr s2);
+
+        static z3::expr mk_belongsto(z3::context& ctx, z3::expr x, z3::expr S);
+
+        static z3::expr mk_single_set(z3::context& ctx, z3::expr x);
+
 
 
 
