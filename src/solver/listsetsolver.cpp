@@ -148,7 +148,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
 
         if (case_i == -1) {
                 // S1 = S2
-                phi_pd = phi_r1 && strt_phi_r2;
+                phi_pd = phi_r1;
         } else if (case_i < 2) {
                 // S2 is possible empty
 
@@ -195,7 +195,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
                 pars.push_back(E_S2);
 
                 phi_pd = (set_vars[0] == set_vars[1]); // S1 = S2
-                phi_pd = phi_pd && (phi_r1 && strt_phi_r2); // phi_r
+                phi_pd = phi_pd || (phi_r1 && strt_phi_r2); // phi_r
 
                 z3::expr_vector src(z3_ctx());
                 z3::expr_vector dst(z3_ctx());
@@ -309,7 +309,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
 
                 z3::expr set_u = expr_tool::mk_binary_set(z3_ctx(), "setunion", minus_set, item_set);// E_S1\E_S2 \union {min(S1)}
                 z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
-                succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u);
+                succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && x<y;
                 z3::expr all2_f = z3::implies(expr_tool::mk_belongsto(z3_ctx(), z, set_u), ((z <= x) || (y <= z)) );
                 // x \in set_u && y \in set_u && forall(z). (z \in set_u -> z<=x && y<=z)
                 succ_f = succ_f && z3::forall(pars2, all2_f);
@@ -318,7 +318,9 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
 
                 tr_f = tr_f && z3::forall(pars1, all1_f);
 
-                phi_pd = phi_pd && tr_f;
+                tr_f = z3::exists(pars, tr_f);
+
+                phi_pd = phi_pd || tr_f;
 
         }
 
@@ -390,8 +392,10 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
                         int row = get_card(item1, set_vars);
                         int col = get_card(item2, set_vars);
 
-                        if (((row|col)&1) == 1) has_s2 = true;
-                        else has_s1 = true;
+                        // std::cout << "row: " << row << ", col: " << col << std::endl;
+
+                        if ( ((row&1) | (col&1)) == 1) has_s2 = true;
+                        if( ((row&1) & (col&1)) == 0) has_s1 = true;
 
                         if(expr_tool::is_fun(phi_r2_i, "=")) {
                                 set_matrix(matrix, row, col, c);
@@ -407,6 +411,8 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
                         }
                 }
         }
+
+        // std::cout <<"has_s1: " << has_s1 << std::endl;
 
 
         if (has_s1)
@@ -434,7 +440,8 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
         }
 
 
-        // display(matrix, set_vars, "phi_r.dot");
+        display(matrix);
+        display(matrix, set_vars, "phi_r.dot");
 
         // compute strt(phi_r)
         bool is_sat = floyd(matrix);
@@ -482,7 +489,7 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
 
 
 
-        // display(matrix, set_vars, "str_phi_r.dot");
+        display(matrix, set_vars, "str_phi_r.dot");
         return case_i;
 }
 

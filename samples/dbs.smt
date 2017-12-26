@@ -17,11 +17,9 @@
                         ; (< (max ?S) (+ (min ?S) 10))
                         (= (min ?S2) (+ (min ?S) 1))
                         ; (= (max ?S2) (- (max ?S) 1))
-
-
                         ; (<= (min ?S2) (- (min ?S) 2))
                         ; (> (min ?S2) (min ?S))
-                         (tobool (ssep
+                        (tobool (ssep
                                  (pto ?E (sref (ref next ?X) (ref data min(?S))))
                                  (sls ?X ?S2 ?F ?S1)
                          ))

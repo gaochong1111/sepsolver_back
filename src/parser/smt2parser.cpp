@@ -1248,7 +1248,7 @@ void smt2parser::parse_get_model() {
         assert(m_get_model ==  curr_id());
         next();
         check_rparen("invalid get-model, excepted ')'");
-        if (sol != NULL && sol->check_sat() != z3::unsat) {
+        if (sol != NULL&& m_ctx.is_sat()  && sol->check_sat() != z3::unsat) {
                 //std::cout <<"Model:\n" <<;
                 sol->get_model();
         }

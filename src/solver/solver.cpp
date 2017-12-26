@@ -20,7 +20,11 @@ void solver::solve() {
     } else {
         std::cout << "Checking entailment.\n";
         z3::check_result result = check_entl();
-        std::cout << "The result: " << result << std::endl;
+        if (result == z3::sat) {
+            std::cout << "The result: unsat"  << std::endl;
+        } else {
+            std::cout << "The result: sat" << std::endl;
+        }
     }
     // 4. end timers
     gettimeofday (&tvEnd, NULL);
