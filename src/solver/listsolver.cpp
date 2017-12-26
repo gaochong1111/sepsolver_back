@@ -191,6 +191,7 @@ z3::check_result listsolver::check_entl() {
         z3::expr phi_abs = get_abstraction(phi, phi_space, phi_new_bools);
         m_ctx.phi_abs = phi_abs;
         m_ctx.phi_space = phi_space;
+        
         ss.reset();
         ss.add(phi_abs);
         z3::check_result phi_res = ss.check();

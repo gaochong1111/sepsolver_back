@@ -1,3 +1,4 @@
+
 ; Extending QF_S:
 ; constant emptybag, 
 ; the function bag, 

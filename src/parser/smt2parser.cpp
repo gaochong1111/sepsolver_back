@@ -314,12 +314,12 @@ z3::expr smt2parser::make_eq(sl_decl_kind kind, z3::expr_vector& args) {
         case SLRD_OP_DISTINCT:
                 if (args[0].to_string() == "nil") {
                         z3::expr nil = z3_ctx().constant("nil", args[1].get_sort());
-                        return args[1] == nil;
+                        return args[1] != nil;
                 }
 
                 if(args[1].to_string() == "nil") {
                         z3::expr nil = z3_ctx().constant("nil", args[0].get_sort());
-                        return args[0] == nil;
+                        return args[0] != nil;
                 }
                 return args[0] != args[1];
         default: break;
