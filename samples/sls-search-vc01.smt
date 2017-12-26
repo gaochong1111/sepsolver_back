@@ -51,7 +51,7 @@
 
 ;; declare set of locations
 
-
+a
 ;; VC1: slseg(root, cur1, M0, M1) * cur1 |->((next,X), (data, d)) * slist(X,M2) & M1 = {d} cup M2 & d <= M2 & (key in M0 <=> key in M1) & 
 ;; cur1 != nil & d = key & ret = 1 |- 
 ;; slist(root, M0) & ret = 1 & key in M0
