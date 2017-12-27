@@ -12,7 +12,7 @@
 
             (exists ((?X Sls_t) (?S2 SetInt))
                     (and
-                        ;(= ?S ?S2)
+                        ; (= ?S ?S2)
                         (= ?S (setunion ?S2 (set (min ?S))))
                         ; (< (max ?S) (+ (min ?S) 10))
                         (= (min ?S2) (+ (min ?S) 1))

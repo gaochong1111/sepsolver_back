@@ -25,6 +25,7 @@ void test() {
                 fstream f(file_name);
                 z3::context ctx;
                 smt2context m_ctx(ctx, "log");
+                m_ctx.logger().disable();
                 smt2parser parser(m_ctx, f);
                 parser();
                 // std::cout << "formula: " << m_ctx.get_negf() << std::endl;

@@ -1349,7 +1349,7 @@ int listsolver::get_numeral(z3::expr x) {
  * @param new_bools [new bool vars]
  * @return      [the abstraction]
  */
-z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools){
+z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools) {
         // logger() << "listsolver::pred2abs \n";
         // logger() << "atom: " << atom << std::endl;
         // logger() << "i: " << i << std::endl;
@@ -1362,7 +1362,7 @@ z3::expr listsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools)
         z3::expr source_int = z3_ctx().int_const(source.c_str()); // Z1
 
         z3::expr atom_f(z3_ctx());
-        if (atom.decl().name().str() == "pto") {
+        if (expr_tool::is_fun(atom, "pto")) {
                 // 1.1 pto atom
                 atom_f = (source_bool && source_int > 0);
         } else {

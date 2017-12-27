@@ -32,7 +32,12 @@ z3::check_result listsetsolver::check_sat() {
 
         // std::cout << "data: " << data << std::endl;
         // std::cout << "space: " << space << std::endl;
+        // get abstraction
+        z3::expr f_abs = data;
+        z3::expr_vector new_bools(z3_ctx());
+        z3::expr space_abs = abs_space(space, new_bools);
 
+        std::cout << "space_abs: " << space_abs << std::endl;
 
         return z3::sat;
 }
@@ -57,10 +62,124 @@ z3::check_result listsetsolver::check_entl() {
  * @param new_bools [new bool vars]
  * @return      [the abstraction]
  */
-z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools){
-        // TODO ..
+z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_bools) {
+        // logger() << "listsolver::pred2abs \n";
+        // logger() << "atom: " << atom << std::endl;
+        // logger() << "i: " << i << std::endl;
 
-        return z3_ctx().bool_val(true);
+        std::string source = atom.arg(0).to_string();
+        std::string new_name = m_ctx.logger().string_format("[%s,%d]", source.c_str(), i);
+        // 1 introduce new vars
+        z3::expr source_bool = z3_ctx().bool_const(new_name.c_str()); // [Z1,i]
+        new_bools.push_back(source_bool);
+        z3::expr source_int = z3_ctx().int_const(source.c_str()); // Z1
+
+        z3::expr atom_f(z3_ctx());
+        if (expr_tool::is_fun(atom, "pto")) {
+                // 1.1 pto atom
+                atom_f = (source_bool && source_int > 0);
+        } else {
+                std::string pred_name = atom.decl().name().str();
+                int index = index_of_pred(pred_name);
+                predicate pred = m_ctx.get_pred(index); // get predicate definition
+                int size = atom.num_args() - pred.size_of_static_parameters(); // size of source and destination paramaters
+                // 1.2 predicate atom
+                // 1.2.1 supposing atom is empty
+
+                z3::expr or_0(z3_ctx());
+                z3::expr dest_int = z3_ctx().int_const(atom.arg(size/2).to_string().c_str());
+                or_0 = !source_bool && (source_int == dest_int);
+                for (int j=1; j<size/2;j++) {
+                        if (expr_tool::is_location(atom.arg(j))) {
+                                z3::expr arg_j_int = z3_ctx().int_const(atom.arg(j).to_string().c_str());
+                                z3::expr arg_j2_int = z3_ctx().int_const(atom.arg(j+size/2).to_string().c_str());
+                                or_0 = or_0 && (arg_j_int == arg_j2_int);
+                        } else {
+                                or_0 = or_0 && (atom.arg(j)==atom.arg(j+size/2));
+                        }
+                }
+
+                // logger() << "or_0: " << or_0 << std::endl;
+
+                // 1.2.2 supposing atom is not emtpy
+                z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
+                z3::expr_vector args = pred.get_pars();
+                z3::expr_vector f_args(z3_ctx()); // predicate parameters, formal parameters
+                z3::expr_vector a_args(z3_ctx()); // actual parameters
+
+                // init formla parameters and actual parameters
+                for (int i=0; i<atom.num_args(); i++) {
+                        if (!expr_tool::is_location(atom.arg(i))) {
+                                f_args.push_back(args[i]);
+                                a_args.push_back(atom.arg(i));
+                        }
+                }
+
+
+                // logger() <<"formal pars: " << f_args << std::endl;
+                // logger() <<"actual pars: " << a_args << std::endl;
+
+                z3::expr or_1(z3_ctx()); // by ufld_1
+                z3::expr or_2(z3_ctx()); // by ufld_ge_2
+
+                int idx = pred.idx_E_gamma(); // check whether E ouccus in gamma
+                logger() << "idx: " << idx << std::endl;
+
+                std::cout << "phi_pd_0: " << phi_pd.arg(0) << std::endl;
+                std::cout << "phi_pd_1: " << phi_pd.arg(1) << std::endl;
+                std::cout << "phi_pd size: " << phi_pd.num_args() << "\n";
+
+
+                z3::expr phi_pd_1 = phi_pd;
+                if (expr_tool::is_fun(phi_pd.arg(0), "or")) phi_pd_1 = phi_pd.arg(0).arg(1);
+                else if (expr_tool::is_fun(phi_pd, "or")) phi_pd_1 = phi_pd.arg(1);
+                z3::expr phi_pd_ge_2 = phi_pd_1;
+                if (expr_tool::is_fun(phi_pd.arg(0), "or")) phi_pd_ge_2 = phi_pd.arg(1);
+
+                // phi_pd_1 = phi_pd_1.substitute(f_args, a_args);
+
+                if (idx != -1) {
+                        // E occurs in gamma TOCHECK
+                        z3::expr E = atom.arg(0);
+                        z3::expr beta_idx = atom.arg(size/2+idx+1);
+                        z3::expr beta_idx_int = z3_ctx().int_const(beta_idx.to_string().c_str());
+
+                        std::string beta_idx_name = m_ctx.logger().string_format("[%s,%d]", beta_idx.to_string().c_str(), i);
+                        z3::expr beta_idx_bool = z3_ctx().bool_const(beta_idx_name.c_str());
+                        new_bools.push_back(beta_idx_bool); // new bool var
+
+                        // ufld_1
+                        z3::expr ufld_1 = (source_int == beta_idx_int && phi_pd_1);
+                        // logger() << "ufld_1: " << ufld_1 << std::endl;
+                        or_1 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_1.substitute(f_args, a_args));
+                        // logger() << "or_1: " << or_1 << std::endl;
+                        // ufld_ge_2
+                        z3::expr ufld_ge_2 = (source_int != beta_idx_int && phi_pd_ge_2);
+
+                        or_2 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_ge_2.substitute(f_args, a_args));
+                        // logger() << "or_2: " << or_2 << std::endl;
+                } else {
+                        // E does not occur in gamma
+                        // ufld_1
+                        z3::expr ufld_1 = phi_pd_1;
+                        // std::cout << "ufld_1: " << ufld_1 << std::endl;
+                        or_1 =  source_bool && source_int>0 && ufld_1.substitute(f_args, a_args);
+                        // logger() << "or_1: " << or_1 << std::endl;
+                        // ufld_ge_2
+                        if (expr_tool::is_fun(phi_pd.arg(0), "or")) {
+                                z3::expr ufld_ge_2 =  phi_pd_ge_2;
+                                or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(f_args, a_args);
+                                // logger() << "or_2: " << or_2 << std::endl;
+                        }
+                }
+
+                // 1.3 or
+                atom_f = or_0 || or_1 ;
+                if (Z3_ast(or_2) != 0) {
+                        atom_f = atom_f || or_2;
+                }
+        }
+        return atom_f;
 }
 
 
@@ -102,7 +221,7 @@ z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
                 dst_pars.push_back(rec_app.arg(i+size/2));
         }
         delta = delta.substitute(src_pars, dst_pars); // delta = phi_r1 && phi_r2
-        std::cout << "phi_r: " << delta << std::endl;
+        // std::cout << "phi_r: " << delta << std::endl;
 
         // 1. get strt(delta)
         z3::expr strt_phi_r2 = z3_ctx().bool_val(true);
@@ -115,12 +234,12 @@ z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
                 return z3_ctx().bool_val(false);
         }
 
-        std::cout << "strt_phi_r2: " << strt_phi_r2 << std::endl;
-        std::cout << "case_i: " << case_i << std::endl;
-        std::cout << "set_vars: " << set_vars << std::endl;
+        // std::cout << "strt_phi_r2: " << strt_phi_r2 << std::endl;
+        // std::cout << "case_i: " << case_i << std::endl;
+        // std::cout << "set_vars: " << set_vars << std::endl;
         // 2. case by case tr
         z3::expr phi_r1 = delta.arg(0);
-        std::cout << "phi_r1: " << phi_r1 << std::endl;
+        // std::cout << "phi_r1: " << phi_r1 << std::endl;
 
         z3::expr phi_pd = z3_ctx().bool_val(true);
 
@@ -440,8 +559,8 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
         }
 
 
-        display(matrix);
-        display(matrix, set_vars, "phi_r.dot");
+        // display(matrix);
+        // display(matrix, set_vars, "phi_r.dot");
 
         // compute strt(phi_r)
         bool is_sat = floyd(matrix);
@@ -462,34 +581,25 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
                 phi_r2_items.push_back(phi_13);
                 phi_r2_items.push_back(phi_23);
 
+                /*
                 std::cout << "phi_01: " << phi_01 << std::endl;
                 std::cout << "phi_02: " << phi_02 << std::endl;
                 std::cout << "phi_03: " << phi_03 << std::endl;
                 std::cout << "phi_12: " << phi_12 << std::endl;
                 std::cout << "phi_13: " << phi_13 << std::endl;
                 std::cout << "phi_23: " << phi_23 << std::endl;
-
+                */
 
 
                 strt_phi_r2 = (phi_01) && (phi_02) && phi_03 && phi_12 && phi_13 && phi_23;
 
-                /*
-                  for (int i=0; i<4; i++) {
-                  for (int j=0; j<4; j++) {
-                  if (i!=j && matrix[i][j] != INT_MAX) {
-                  strt_phi_r2 = strt_phi_r2 && (get_card(i, set_vars) <= get_card(j, set_vars) + z3_ctx().int_val(matrix[i][j]));
-                  }
-                  }
-                  }
-                */
-                // strt_phi_r = phi_r1 && strt_phi_r2;
         } else {
                 strt_phi_r2 =  z3_ctx().bool_val(false);
         }
 
 
 
-        display(matrix, set_vars, "str_phi_r.dot");
+        // display(matrix, set_vars, "str_phi_r.dot");
         return case_i;
 }
 
@@ -563,7 +673,7 @@ void listsetsolver::set_matrix(int (&matrix)[4][4], int i, int j, int val) {
  */
 bool listsetsolver::floyd(int (&matrix)[4][4]) {
 
-        std::cout << "floyd.\n";
+        // std::cout << "floyd.\n";
         int path[4][4];
         int dist[4][4];
 
