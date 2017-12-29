@@ -94,7 +94,7 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
 
     }
 
-    if (space.decl().name().str() == "tobool") {
+    if (Z3_ast(space) != 0 && space.decl().name().str() == "tobool") {
         if (space.arg(0).decl().name().str() == "ssep") space = space.arg(0);
     }
 }

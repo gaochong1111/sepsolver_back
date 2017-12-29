@@ -2,6 +2,8 @@
 #include <climits>
 #include <fstream>
 
+#include "qgdbs_translator.h"
+
 /**
  *###################### listsetsolver ####################################
  */
@@ -30,14 +32,28 @@ z3::check_result listsetsolver::check_sat() {
 
         get_data_space(formula, data, space);
 
+
         // std::cout << "data: " << data << std::endl;
         // std::cout << "space: " << space << std::endl;
+
         // get abstraction
         z3::expr f_abs = data;
-        z3::expr_vector new_bools(z3_ctx());
-        z3::expr space_abs = abs_space(space, new_bools);
+        z3::expr space_abs = z3_ctx().bool_val(true);
+        if (Z3_ast(space) != 0) {
+                z3::expr_vector new_bools(z3_ctx());
+                space_abs = abs_space(space, new_bools);
+        }
 
-        std::cout << "space_abs: " << space_abs << std::endl;
+        // std::cout << "space_abs: " << space_abs << std::endl;
+
+        f_abs = f_abs && space_abs;
+
+        std::cout << "f_abs: " << f_abs << std::endl;
+
+        // translate into N
+        qgdbs_translator translator(z3_ctx(), f_abs);
+        translator.get_formula();
+
 
         return z3::sat;
 }

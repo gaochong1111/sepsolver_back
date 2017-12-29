@@ -78,6 +78,9 @@ void expr_tool::get_constants(z3::expr exp, std::set<z3::expr, exprcomp> &consta
 }
 
 
+
+
+
 void expr_tool::get_all_field_of_pto(z3::expr pto, std::vector<z3::expr> fields) {
         if (is_fun(pto, "pto")) {
                 z3::expr sref = pto.arg(1);

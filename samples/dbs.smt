@@ -42,9 +42,10 @@
           (+ (min S1) 2)
         )
         (subset S1 S2)
-        (tobool
-            (sls E S1 F S2)
-        )
+
+        ;(tobool
+        ;    (sls E S1 F S2)
+        ;    )
 )
 
 )
