@@ -135,6 +135,13 @@ int expr_tool::index_of_exp(z3::expr exp, std::vector<z3::expr> &expr_vec) {
         return -1;
 }
 
+int expr_tool::rindex_of_exp(z3::expr exp, std::vector<z3::expr> &expr_vec) {
+        for (int i=expr_vec.size()-1; i>=0; i--) {
+                if (exp.hash() == expr_vec[i].hash()) return i;
+        }
+        return -1;
+}
+
 
 bool expr_tool::is_constant(z3::expr exp) {
         if (exp.to_string() == "true" || exp.to_string()=="false" || exp.is_numeral()) return true;
@@ -153,6 +160,20 @@ bool expr_tool::is_location(z3::expr exp) {
 
 bool expr_tool::is_setint(z3::expr exp) {
         if (exp.get_sort().to_string() == "SetInt") return true;
+        return false;
+}
+
+bool expr_tool::is_setint_const(z3::expr exp) {
+        if (exp.is_const() && exp.get_sort().to_string() == "SetInt") {
+                return true;
+        }
+        return false;
+}
+
+bool expr_tool::is_int_const(z3::expr exp) {
+        if (exp.is_const() && exp.get_sort().to_string() == "Int") {
+                return true;
+        }
         return false;
 }
 
@@ -242,4 +263,71 @@ z3::expr expr_tool::mk_single_set(z3::context &ctx, z3::expr x) {
                 return f(x);
         }
         return mk_emptyset(ctx);
+}
+
+void expr_tool::get_zero_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set) {
+        if (exp.is_app()) {
+                if (exp.is_const() && !expr_tool::is_constant(exp)) {
+                        if (exp.get_sort().to_string() == "Bool")
+                                vars_set.insert(exp);
+                } else {
+                        for (int i=0; i<exp.num_args(); i++) {
+                                get_zero_order_vars(exp.arg(i), vars_set);
+                        }
+                }
+        }
+}
+
+void expr_tool::get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set) {
+        if (exp.is_app()) {
+                if (exp.is_const() && !expr_tool::is_constant(exp)) {
+                        if (exp.get_sort().to_string() == "Int")
+                                vars_set.insert(exp);
+                } else {
+                        for (int i=0; i<exp.num_args(); i++) {
+                                get_first_order_vars(exp.arg(i), vars_set);
+                        }
+                }
+        }
+}
+
+void expr_tool::get_second_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set) {
+        if (exp.is_app()) {
+                if (exp.is_const() && !expr_tool::is_constant(exp)) {
+                        if (exp.get_sort().to_string() == "SetInt")
+                                vars_set.insert(exp);
+                } else {
+                        for (int i=0; i<exp.num_args(); i++) {
+                                get_second_order_vars(exp.arg(i), vars_set);
+                        }
+                }
+        }
+}
+
+
+void expr_tool::get_pars_quantifier(z3::context &ctx, z3::expr exp, z3::expr_vector &bounds, z3::expr &body) {
+        if (exp.is_quantifier()) {
+                int bnum = Z3_get_quantifier_num_bound(Z3_context(ctx), Z3_ast(exp));
+                for (int i=bnum-1; i>=0; i--) {
+                        Z3_symbol sym = Z3_get_quantifier_bound_name(Z3_context(ctx), Z3_ast(exp), i);
+                        Z3_sort sym_s = Z3_get_quantifier_bound_sort(Z3_context(ctx), Z3_ast(exp), i);
+                        Z3_ast x = Z3_mk_const(Z3_context(ctx), sym, sym_s);
+                        z3::expr bound(ctx, x);
+                        bounds.push_back(bound);
+                }
+                body = exp.body().substitute(bounds);
+        }
+}
+
+std::string expr_tool::get_mona_name(z3::expr exp) {
+        if (exp.is_const() && exp.is_bool()) {
+                std::string name = exp.to_string();
+                if (name.find("|[") == 0) {
+                        name = name.replace(name.find("|["), 2, "$");
+                        name = name.replace(name.find("]|"), 2, "$");
+                        name = name.replace(name.find(","), 1, "_");
+                        return name;
+                }
+        }
+        return exp.to_string();
 }

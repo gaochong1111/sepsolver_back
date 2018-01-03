@@ -62,6 +62,11 @@ void solver::get_data_space(z3::expr &formula, z3::expr &data, z3::expr &space) 
             if (expr_tool::is_fun(curr, "and")) {
                 stack.pop_back();
                 for (int i=0; i<curr.num_args(); i++) {
+                    if (curr.arg(i).is_quantifier()) {
+                        data_items.push_back(curr.arg(i));
+                        continue;
+                    }
+
                     if (expr_tool::is_fun(curr.arg(i), "tobool")) {
                         space = curr.arg(i);
                         break;

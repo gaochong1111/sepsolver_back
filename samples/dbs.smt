@@ -37,15 +37,23 @@
 (declare-fun F() Sls_t)
 
 (assert (and
-        (<=
-          (max (setunion S1 S2))
-          (+ (min S1) 2)
-        )
-        (subset S1 S2)
+        (> (min S1) 1)
+        ; (not (subset S2 S1) )
+        (distinct E F)
+        (= (min S2) (+ min(S1) 2))
 
-        ;(tobool
-        ;    (sls E S1 F S2)
+        ;(exists ((S SetInt))
+        ;    (and
+        ;        (> (min S) 0)
+        ;        (exists ((S SetInt))
+        ;              (< (max S) 1)
+        ;        )
         ;    )
+        ;)
+
+        (tobool
+            (sls E S1 F S2)
+        )
 )
 
 )

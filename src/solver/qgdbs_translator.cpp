@@ -3,7 +3,7 @@
 z3::expr qgdbs_translator::get_formula() {
         // 1. get first order vars
         std::set<z3::expr, exprcomp> vars_set;
-        get_first_order_vars(m_formula, vars_set);
+        expr_tool::get_first_order_vars(m_formula, vars_set);
         expr_tool::expr_set_to_vec(vars_set, m_first_order_vars);
         int num = m_first_order_vars.size();
         int LIMIT = 1<<num;
@@ -155,7 +155,7 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula, std::vector<z3::e
  * @return 0[+], 1[-]
  */
 int qgdbs_translator::get_fo_ctx(z3::expr exp, int ctx , std::vector<z3::expr>& bounds, int b_ctx) {
-        int index = expr_tool::index_of_exp(exp, bounds);
+        int index = expr_tool::rindex_of_exp(exp, bounds);
         // exp is bound var
         if (index != -1) return b_ctx & (1<<index);
 
@@ -174,6 +174,12 @@ int qgdbs_translator::get_fo_ctx(z3::expr exp, int ctx , std::vector<z3::expr>& 
  * @return tr+(atom)
  */
 z3::expr qgdbs_translator::translate_atom_plus(z3::expr atom, std::vector<z3::expr>& bounds, int b_ctx) {
+
+        // second order var
+        int ctx_atom = get_fo_ctx(atom, -1, bounds, b_ctx);
+        if (ctx_atom == -1) {
+        }
+
         return m_ctx.bool_val(true);
 }
 
@@ -197,8 +203,96 @@ z3::expr qgdbs_translator::translate_atom_minus(z3::expr atom, std::vector<z3::e
  * @return tr+(formula)
  */
 z3::expr qgdbs_translator::translate_formula_plus(z3::expr formula, std::vector<z3::expr>& bounds, int b_ctx) {
-        return m_ctx.bool_val(true);
+        Log log;
+        z3::expr empty = expr_tool::mk_emptyset(m_ctx);
 
+        // atom
+        // [first order ]
+        if (formula.get_sort().to_string() == "Int") {
+                // first order var
+                if (expr_tool::is_int_const(formula)) {
+                        if (formula.is_numeral()) {
+                                // constant
+                                int c = formula.get_numeral_int();
+                                if (c>=0) {
+                                        return formula;
+                                } else {
+                                        // ctx non-consistent
+                                        return empty;
+                                }
+                        } else {
+                                // variable
+                                int ctx_v = get_fo_ctx(formula, -1, bounds, b_ctx);
+                                if (ctx_v == -1 || ctx_v == 1) {
+                                        return empty;
+                                } else {
+                                        std::string name = log.string_format("%s_plus", formula.to_string());
+                                        return m_ctx.int_const(name.c_str());
+                                }
+                        }
+                }
+                // (min ) (max )
+                if (expr_tool::is_fun(formula, "min")) {
+                        z3::expr ts = translate_formula_plus(formula.arg(0), bounds, b_ctx);
+                        if (expr_tool::is_fun(ts, "emptyset")) {
+                                // TODO UNDEF
+                        }
+                        return expr_tool::mk_min_max(m_ctx, 0, ts);
+                }
+                if (expr_tool::is_fun(formula, "max")) {
+                        z3::expr ts = translate_formula_plus(formula.arg(0), bounds, b_ctx);
+                        if (expr_tool::is_fun(ts, "emptyset")) {
+                                // TODO UNDEF
+                        }
+                        return expr_tool::mk_min_max(m_ctx, 1, ts);
+                }
+        }
+
+
+        // [second order]
+        // emptyset
+        if (expr_tool::is_fun(formula, "emptyset")) {
+                return expr_tool::mk_emptyset(m_ctx);
+        }
+        // set var
+        if (expr_tool::is_setint(formula)) {
+                std::string name = log.string_format("%s_plus", formula.to_string());
+                return expr_tool::mk_set_var(m_ctx, name);
+        }
+        // (set int)
+        if (expr_tool::is_fun(formula, "set")) {
+                z3::expr element = translate_formula_plus(formula.arg(0), bounds, b_ctx); // first order
+                if (expr_tool::is_fun(element, "emptyset")) {
+                        return expr_tool::mk_emptyset(m_ctx);
+                } else {
+                        return expr_tool::mk_single_set(m_ctx, element);
+                }
+        }
+
+
+        // (setunion ) (setintersect ) (setminus )
+        if (expr_tool::is_fun(formula, "setunion")) {
+                z3::expr ts1 = translate_formula_plus(formula.arg(0), bounds, b_ctx);
+                z3::expr ts2 = translate_formula_plus(formula.arg(1), bounds, b_ctx);
+
+                return expr_tool::mk_binary_set(m_ctx, "setunion", ts1, ts2);
+        }
+
+        if (expr_tool::is_fun(formula, "setintersect")) {
+                z3::expr ts1 = translate_formula_plus(formula.arg(0), bounds, b_ctx);
+                z3::expr ts2 = translate_formula_plus(formula.arg(1), bounds, b_ctx);
+
+                return expr_tool::mk_binary_set(m_ctx, "setintersect", ts1, ts2);
+        }
+
+        if (expr_tool::is_fun(formula, "setminus")) {
+                z3::expr ts1 = translate_formula_plus(formula.arg(0), bounds, b_ctx);
+                z3::expr ts2 = translate_formula_plus(formula.arg(1), bounds, b_ctx);
+
+                return expr_tool::mk_binary_set(m_ctx, "setminus", ts1, ts2);
+        }
+
+        return m_ctx.bool_val(true);
 }
 
 /**
@@ -213,20 +307,3 @@ z3::expr qgdbs_translator::translate_formula_minus(z3::expr formula, std::vector
 
 }
 
-/**
- * get first order vars in exp
- * @param exp: formula
- * @param vars_set : result
- */
-void qgdbs_translator::get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set) {
-        if (exp.is_app()) {
-                if (exp.is_const() && !expr_tool::is_constant(exp)) {
-                        if (exp.get_sort().to_string() == "Int")
-                            vars_set.insert(exp);
-                } else {
-                        for (int i=0; i<exp.num_args(); i++) {
-                                get_first_order_vars(exp.arg(i), vars_set);
-                        }
-                }
-        }
-}

@@ -2,6 +2,7 @@
 #define QGDBS_TRANSLATOR_H
 
 #include "expr_tool.h"
+#include "log.h"
 
 class qgdbs_translator {
 private:
@@ -12,7 +13,7 @@ private:
         int m_fovar_ctx; // bits: 000111 [0: +, 1: -]
 
 private:
-        void get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp>& vars_set);
+        // void get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp>& vars_set);
         int get_fo_ctx(z3::expr exp, int ctx, std::vector<z3::expr>& bounds, int b_ctx);
 
         z3::expr translate_formula(z3::expr formula, std::vector<z3::expr>& bounds, int b_ctx);

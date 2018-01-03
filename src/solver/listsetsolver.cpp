@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "qgdbs_translator.h"
+#include "mona_translator.h"
 
 /**
  *###################### listsetsolver ####################################
@@ -51,8 +52,12 @@ z3::check_result listsetsolver::check_sat() {
         std::cout << "f_abs: " << f_abs << std::endl;
 
         // translate into N
-        qgdbs_translator translator(z3_ctx(), f_abs);
-        translator.get_formula();
+        // qgdbs_translator translator(z3_ctx(), f_abs);
+        // translator.get_formula();
+
+        mona_translator mona_tl(z3_ctx(), f_abs);
+
+        mona_tl.write_to_file("test.mona");
 
 
         return z3::sat;

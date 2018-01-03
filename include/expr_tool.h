@@ -35,10 +35,14 @@ public:
 
 
         static int index_of_exp(z3::expr exp, std::vector<z3::expr>& expr_vec);
+        static int rindex_of_exp(z3::expr exp, std::vector<z3::expr>& expr_vec);
+
         static bool is_constant(z3::expr exp);
         static bool is_fun(z3::expr expr, std::string fname);
         static bool is_location(z3::expr exp);
         static bool is_setint(z3::expr exp);
+        static bool is_setint_const(z3::expr exp);
+        static bool is_int_const(z3::expr exp);
         static bool contain_setint(z3::expr exp);
 
         static z3::expr eq_exp(z3::context& ctx, z3::expr exp1, z3::expr exp2);
@@ -52,6 +56,14 @@ public:
         static z3::expr mk_belongsto(z3::context& ctx, z3::expr x, z3::expr S);
 
         static z3::expr mk_single_set(z3::context& ctx, z3::expr x);
+
+        static void get_zero_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set);
+        static void get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set);
+        static void get_second_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &vars_set);
+
+        static void get_pars_quantifier(z3::context& ctx, z3::expr exp, z3::expr_vector& bounds, z3::expr& body);
+
+        static std::string get_mona_name(z3::expr exp);
 
 
 
