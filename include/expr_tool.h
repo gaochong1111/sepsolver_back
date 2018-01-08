@@ -64,6 +64,9 @@ public:
         static void get_pars_quantifier(z3::context& ctx, z3::expr exp, z3::expr_vector& bounds, z3::expr& body);
 
         static std::string get_mona_name(z3::expr exp);
+        static z3::expr get_plus_exp(z3::context& ctx, z3::expr exp);
+        static z3::expr get_minus_exp(z3::context& ctx, z3::expr exp);
+        static z3::expr mk_item(z3::expr t_i_1, std::string R, z3::expr t_i_2, z3::expr c);
 
 
 

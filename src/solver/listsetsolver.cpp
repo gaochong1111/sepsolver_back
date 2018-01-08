@@ -4,6 +4,7 @@
 
 #include "qgdbs_translator.h"
 #include "mona_translator.h"
+#include "mona_executor.h"
 
 /**
  *###################### listsetsolver ####################################
@@ -40,16 +41,20 @@ z3::check_result listsetsolver::check_sat() {
         // get abstraction
         z3::expr f_abs = data;
         z3::expr space_abs = z3_ctx().bool_val(true);
+        z3::expr star_abs = z3_ctx().bool_val(true);
         if (Z3_ast(space) != 0) {
                 z3::expr_vector new_bools(z3_ctx());
                 space_abs = abs_space(space, new_bools);
+                // std::cout << "new bool: " << new_bools << std::endl;
+                star_abs = abs_phi_star(new_bools);
         }
 
         // std::cout << "space_abs: " << space_abs << std::endl;
 
-        f_abs = f_abs && space_abs;
+        f_abs = f_abs && space_abs && star_abs;
 
-        std::cout << "f_abs: " << f_abs << std::endl;
+
+        // std::cout << "f_abs: " << f_abs << std::endl;
 
         // translate into N
         // qgdbs_translator translator(z3_ctx(), f_abs);
@@ -58,6 +63,13 @@ z3::check_result listsetsolver::check_sat() {
         mona_translator mona_tl(z3_ctx(), f_abs);
 
         mona_tl.write_to_file("test.mona");
+
+        mona_executor mona_exe;
+        mona_exe.set_args("-q");
+        mona_exe.set_name("test.mona");
+        std::string output = mona_exe.execute();
+        std::cout << "output: \n" << output << std::endl;
+
 
 
         return z3::sat;
@@ -107,6 +119,17 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 // 1.2 predicate atom
                 // 1.2.1 supposing atom is empty
 
+                z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
+                z3::expr_vector args = pred.get_pars();
+
+                z3::expr phi_p = pred.get_phi_p(z3_ctx());
+                z3::expr_vector gamma_1(z3_ctx()); // new variables
+                z3::expr_vector gamma_2(z3_ctx());
+                z3::expr_vector gamma_12(z3_ctx());
+
+                z3::expr_vector alpha(z3_ctx());
+                z3::expr_vector beta(z3_ctx());
+
                 z3::expr or_0(z3_ctx());
                 z3::expr dest_int = z3_ctx().int_const(atom.arg(size/2).to_string().c_str());
                 or_0 = !source_bool && (source_int == dest_int);
@@ -117,14 +140,24 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                                 or_0 = or_0 && (arg_j_int == arg_j2_int);
                         } else {
                                 or_0 = or_0 && (atom.arg(j)==atom.arg(j+size/2));
+
+                                alpha.push_back(args[j]);
+                                beta.push_back(args[j+size/2]);
+                                std::string gamma1_name = atom.arg(j).to_string();
+                                gamma1_name.append("_1");
+                                z3::expr gamma1_j = z3_ctx().constant(gamma1_name.c_str(), atom.arg(j).get_sort());
+                                gamma_1.push_back(gamma1_j);
+
+                                std::string gamma2_name = atom.arg(j).to_string();
+                                gamma2_name.append("_2");
+                                z3::expr gamma2_j = z3_ctx().constant(gamma2_name.c_str(), atom.arg(j).get_sort());
+                                gamma_2.push_back(gamma2_j);
                         }
                 }
 
-                // logger() << "or_0: " << or_0 << std::endl;
+                for (int i=0; i<gamma_1.size(); i++) gamma_12.push_back(gamma_1[i]);
+                for (int i=0; i<gamma_2.size(); i++) gamma_12.push_back(gamma_2[i]);
 
-                // 1.2.2 supposing atom is not emtpy
-                z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
-                z3::expr_vector args = pred.get_pars();
                 z3::expr_vector f_args(z3_ctx()); // predicate parameters, formal parameters
                 z3::expr_vector a_args(z3_ctx()); // actual parameters
 
@@ -137,6 +170,12 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 }
 
 
+                // logger() << "or_0: " << or_0 << std::endl;
+
+                // 1.2.2 supposing atom is not emtpy
+
+
+
                 // logger() <<"formal pars: " << f_args << std::endl;
                 // logger() <<"actual pars: " << a_args << std::endl;
 
@@ -144,20 +183,20 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 z3::expr or_2(z3_ctx()); // by ufld_ge_2
 
                 int idx = pred.idx_E_gamma(); // check whether E ouccus in gamma
-                logger() << "idx: " << idx << std::endl;
+                // logger() << "idx: " << idx << std::endl;
 
-                std::cout << "phi_pd_0: " << phi_pd.arg(0) << std::endl;
-                std::cout << "phi_pd_1: " << phi_pd.arg(1) << std::endl;
-                std::cout << "phi_pd size: " << phi_pd.num_args() << "\n";
+                // std::cout << "phi_p: " << phi_p << std::endl;
+                // std::cout << "alpah: " << alpha << std::endl;
+                // std::cout << "beta: " << beta << std::endl;
 
+                z3::expr phi_pd_1 = phi_p.substitute(beta, gamma_1);
+                z3::expr phi_pd_2 =  phi_p.substitute(f_args, gamma_12);
+                z3::expr phi_pd_3 = phi_pd.substitute(alpha, gamma_2);
 
-                z3::expr phi_pd_1 = phi_pd;
-                if (expr_tool::is_fun(phi_pd.arg(0), "or")) phi_pd_1 = phi_pd.arg(0).arg(1);
-                else if (expr_tool::is_fun(phi_pd, "or")) phi_pd_1 = phi_pd.arg(1);
-                z3::expr phi_pd_ge_2 = phi_pd_1;
-                if (expr_tool::is_fun(phi_pd.arg(0), "or")) phi_pd_ge_2 = phi_pd.arg(1);
-
-                // phi_pd_1 = phi_pd_1.substitute(f_args, a_args);
+                // std::cout << "phi_pd_1: " << phi_pd_1 << std::endl;
+                // std::cout << "phi_pd_2: " << phi_pd_2 << std::endl;
+                // std::cout << "phi_pd_3: " << phi_pd_3 << std::endl;
+                z3::expr phi_pd_ge_2 =  phi_pd_1 && phi_pd_2  && phi_pd_3;
 
                 if (idx != -1) {
                         // E occurs in gamma TOCHECK
@@ -170,7 +209,7 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                         new_bools.push_back(beta_idx_bool); // new bool var
 
                         // ufld_1
-                        z3::expr ufld_1 = (source_int == beta_idx_int && phi_pd_1);
+                        z3::expr ufld_1 = (source_int == beta_idx_int && phi_p);
                         // logger() << "ufld_1: " << ufld_1 << std::endl;
                         or_1 = ((source_bool && source_int>0 && beta_idx_bool && beta_idx_int>0) && ufld_1.substitute(f_args, a_args));
                         // logger() << "or_1: " << or_1 << std::endl;
@@ -182,23 +221,17 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 } else {
                         // E does not occur in gamma
                         // ufld_1
-                        z3::expr ufld_1 = phi_pd_1;
+                        z3::expr ufld_1 = phi_p;
                         // std::cout << "ufld_1: " << ufld_1 << std::endl;
                         or_1 =  source_bool && source_int>0 && ufld_1.substitute(f_args, a_args);
                         // logger() << "or_1: " << or_1 << std::endl;
-                        // ufld_ge_2
-                        if (expr_tool::is_fun(phi_pd.arg(0), "or")) {
-                                z3::expr ufld_ge_2 =  phi_pd_ge_2;
-                                or_2 = source_bool && source_int>0 && ufld_ge_2.substitute(f_args, a_args);
-                                // logger() << "or_2: " << or_2 << std::endl;
-                        }
+                        z3::expr ufld_2 = phi_pd_ge_2;
+                        or_2 = source_bool && source_int>0 && ufld_2.substitute(f_args, a_args);
                 }
 
                 // 1.3 or
-                atom_f = or_0 || or_1 ;
-                if (Z3_ast(or_2) != 0) {
-                        atom_f = atom_f || or_2;
-                }
+                atom_f = or_0 || or_1 || or_2;
+
         }
         return atom_f;
 }
@@ -229,19 +262,7 @@ void listsetsolver::compute_all_tr_closure() {
  */
 z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
 
-        z3::expr delta = pred.get_rule(0).get_data();
-        int st_size = pred.size_of_static_parameters();
-        int size = pred.get_pars().size();
-        pred_rule rule = pred.get_rule(0);
-        z3::expr rec_app = rule.get_rec_apps()[0];
-
-        z3::expr_vector src_pars(z3_ctx());
-        z3::expr_vector dst_pars(z3_ctx());
-        for (int i=0; i<size/2; i++) {
-                src_pars.push_back(rec_app.arg(i));
-                dst_pars.push_back(rec_app.arg(i+size/2));
-        }
-        delta = delta.substitute(src_pars, dst_pars); // delta = phi_r1 && phi_r2
+        z3::expr delta = pred.get_phi_p(z3_ctx()); // delta = phi_r1 && phi_r2
         // std::cout << "phi_r: " << delta << std::endl;
 
         // 1. get strt(delta)
@@ -266,7 +287,7 @@ z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
 
         phi_pd = compute_tr_by_case(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
 
-        std::cout << "TR: " << phi_pd << std::endl;
+        // std::cout << "TR: " << phi_pd << std::endl;
 
         return phi_pd;
 }
@@ -378,7 +399,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
                         item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
 
                         // {min(S2)}
-                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 0, set_vars[1]));
+                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 0, E_S2));
 
                         // src3(min(S1), min(S2))
                         src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[0]));
@@ -396,7 +417,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
                         item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
 
                         // {max(S2)}
-                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 1, set_vars[1]));
+                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 1, E_S2));
 
                         // src3(max(S1), max(S2))
                         src3.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[0]));
@@ -447,7 +468,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
                 pars1.push_back(y);
                 pars2.push_back(z);
 
-                z3::expr set_u = expr_tool::mk_binary_set(z3_ctx(), "setunion", minus_set, item_set);// E_S1\E_S2 \union {min(S1)}
+                z3::expr set_u = expr_tool::mk_binary_set(z3_ctx(), "setunion", minus_set, item_set);// E_S1\E_S2 \union {min(E_S2)}
                 z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
                 succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && x<y;
                 z3::expr all2_f = z3::implies(expr_tool::mk_belongsto(z3_ctx(), z, set_u), ((z <= x) || (y <= z)) );

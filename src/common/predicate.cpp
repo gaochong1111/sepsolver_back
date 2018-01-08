@@ -59,6 +59,9 @@ int predicate::idx_E_gamma() {
         return -1;
 }
 
+/**
+ * get principal location filed
+ */
 z3::expr predicate::get_plfld() {
         if (is_list()) {
                 z3::expr pto = m_rec_rules[0].get_pto();
@@ -78,4 +81,26 @@ z3::expr predicate::get_plfld() {
                 }
         }
         return m_pars[0];
+}
+
+/**
+ * get phi_p (delta) of list in inductive rule
+ */
+z3::expr predicate::get_phi_p(z3::context& ctx) {
+        z3::expr delta = get_rule(0).get_data();
+        if (is_listset()) {
+                int st_size = size_of_static_parameters();
+                int size = m_pars.size() - st_size;
+                pred_rule rule = m_rec_rules[0];
+                z3::expr rec_app = rule.get_rec_apps()[0];
+
+                z3::expr_vector src_pars(ctx);
+                z3::expr_vector dst_pars(ctx);
+                for (int i=0; i<size/2; i++) {
+                        src_pars.push_back(rec_app.arg(i));
+                        dst_pars.push_back(rec_app.arg(i+size/2));
+                }
+                delta = delta.substitute(src_pars, dst_pars); // delta = phi_r1 && phi_r2
+        }
+        return delta;
 }

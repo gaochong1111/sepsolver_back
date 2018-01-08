@@ -37,10 +37,10 @@
 (declare-fun F() Sls_t)
 
 (assert (and
-        (> (min S1) 1)
+        ; (> (min S1) 1)
         ; (not (subset S2 S1) )
-        (distinct E F)
-        (= (min S2) (+ min(S1) 2))
+        ; (distinct E F)
+        (= (min S2) (+ min(S1) 5))
 
         ;(exists ((S SetInt))
         ;    (and

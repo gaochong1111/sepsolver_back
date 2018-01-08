@@ -14,6 +14,9 @@ enum mona_op {
         MONA_GT,
         MONA_EQ,
         MONA_DISTINCT,
+        MONA_SUB,
+        MONA_IN,
+        MONA_SET,
         MONA_PLUS,
         MONA_SUBSTRACT,
         // MONA_MUL,
@@ -22,10 +25,7 @@ enum mona_op {
         MONA_MAX,
         MONA_UNION,
         MONA_INTER,
-        MONA_MINUS,
-        MONA_SUB,
-        MONA_IN,
-        MONA_SET
+        MONA_MINUS
 };
 
 
@@ -64,7 +64,7 @@ mona_translator(z3::context& ctx, z3::expr formula): m_ctx(ctx), m_formula(formu
                 op_map["set"] = MONA_SET;
         }
         void write_to_file(std::string name);
-        std::string get_str(z3::expr item,  int ctx, std::vector<std::set<std::string> >& ctx_set_items);
+        std::string get_str(z3::expr item, std::set<std::string>& set_items);
 };
 
 

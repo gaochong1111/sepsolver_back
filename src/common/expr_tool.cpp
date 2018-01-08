@@ -144,7 +144,7 @@ int expr_tool::rindex_of_exp(z3::expr exp, std::vector<z3::expr> &expr_vec) {
 
 
 bool expr_tool::is_constant(z3::expr exp) {
-        if (exp.to_string() == "true" || exp.to_string()=="false" || exp.is_numeral()) return true;
+        if (exp.to_string() == "true" || exp.to_string()=="false" || exp.to_string()=="emptyset" || exp.is_numeral()) return true;
         return false;
 }
 
@@ -330,4 +330,33 @@ std::string expr_tool::get_mona_name(z3::expr exp) {
                 }
         }
         return exp.to_string();
+}
+
+z3::expr expr_tool::get_plus_exp(z3::context& ctx, z3::expr exp) {
+        if (exp.is_const()) {
+                std::string name = exp.to_string();
+                name.append("_plus");
+                return ctx.constant(name.c_str(), exp.get_sort());
+        }
+        return exp;
+}
+
+z3::expr expr_tool::get_minus_exp(z3::context& ctx, z3::expr exp) {
+        if (exp.is_const()) {
+                std::string name = exp.to_string();
+                name.append("_minus");
+                return ctx.constant(name.c_str(), exp.get_sort());
+        }
+        return exp;
+}
+
+z3::expr expr_tool::mk_item(z3::expr t_i_1, std::string R, z3::expr t_i_2, z3::expr c) {
+        if (R == "=") {
+                return t_i_1 == (t_i_2 + c);
+        } else if (R == "<=") {
+                return t_i_1 <= (t_i_2 + c);
+        } else if (R == ">=") {
+                return t_i_1 >= (t_i_2 + c);
+        }
+        return t_i_1;
 }

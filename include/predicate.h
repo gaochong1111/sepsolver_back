@@ -59,6 +59,8 @@ predicate(z3::func_decl fun, z3::expr_vector pars, z3::expr base_rule)
 
         z3::expr get_plfld();
 
+        z3::expr get_phi_p(z3::context& ctx);
+
         friend std::ostream& operator<<(std::ostream& out, predicate& p) ;
 };
 
