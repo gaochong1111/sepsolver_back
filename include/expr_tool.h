@@ -69,7 +69,9 @@ public:
         static z3::expr mk_item(z3::expr t_i_1, std::string R, z3::expr t_i_2, z3::expr c);
 
 
-
+        static void write_file(std::string fname, z3::expr& formula);
+        static void get_singleset(z3::expr exp, std::set<z3::expr, exprcomp>& singles);
+        static bool get_singleset_min(z3::expr exp, z3::expr& S);
 
 };
 

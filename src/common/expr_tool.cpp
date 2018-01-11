@@ -1,4 +1,5 @@
 #include "expr_tool.h"
+#include <fstream>
 
 void expr_tool::get_vars(z3::expr exp, std::set<z3::expr, exprcomp> &var_set) {
         if (exp.is_app()) {
@@ -249,8 +250,9 @@ z3::expr expr_tool::mk_belongsto(z3::context &ctx, z3::expr x, z3::expr S) {
                 z3::sort set_int_s = ctx.uninterpreted_sort("SetInt");
                 z3::sort bool_s = ctx.bool_sort();
                 z3::sort int_s = ctx.int_sort();
-                z3::func_decl f = ctx.function("belongsto", int_s, set_int_s, bool_s);
-                return f(x, S);
+                z3::expr x_set = mk_single_set(ctx, x);
+                z3::func_decl f = ctx.function("subset", set_int_s, set_int_s, bool_s);
+                return f(x_set, S);
         }
         return ctx.bool_val(false);
 }
@@ -275,6 +277,8 @@ void expr_tool::get_zero_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> &
                                 get_zero_order_vars(exp.arg(i), vars_set);
                         }
                 }
+        } else if(exp.is_quantifier()) {
+                get_zero_order_vars(exp.body(), vars_set);
         }
 }
 
@@ -288,6 +292,8 @@ void expr_tool::get_first_order_vars(z3::expr exp, std::set<z3::expr, exprcomp> 
                                 get_first_order_vars(exp.arg(i), vars_set);
                         }
                 }
+        } else if(exp.is_quantifier()) {
+                get_first_order_vars(exp.body(), vars_set);
         }
 }
 
@@ -301,6 +307,8 @@ void expr_tool::get_second_order_vars(z3::expr exp, std::set<z3::expr, exprcomp>
                                 get_second_order_vars(exp.arg(i), vars_set);
                         }
                 }
+        } else if(exp.is_quantifier()) {
+                get_second_order_vars(exp.body(), vars_set);
         }
 }
 
@@ -351,12 +359,46 @@ z3::expr expr_tool::get_minus_exp(z3::context& ctx, z3::expr exp) {
 }
 
 z3::expr expr_tool::mk_item(z3::expr t_i_1, std::string R, z3::expr t_i_2, z3::expr c) {
+        bool flag = false;
+        if (t_i_2.is_numeral() && t_i_2.get_numeral_int() == 0) {
+                flag = true;
+        }
         if (R == "=") {
-                return t_i_1 == (t_i_2 + c);
+                return flag? t_i_1 == c : t_i_1 == (t_i_2 + c);
         } else if (R == "<=") {
-                return t_i_1 <= (t_i_2 + c);
+                return flag? t_i_1 <= c : t_i_1 <= (t_i_2 + c);
         } else if (R == ">=") {
-                return t_i_1 >= (t_i_2 + c);
+                return flag? t_i_1 >= c : t_i_1 >= (t_i_2 + c);
         }
         return t_i_1;
+}
+
+void expr_tool::get_singleset(z3::expr exp, std::set<z3::expr, exprcomp> &singles) {
+        if (exp.is_app()) {
+                if (is_fun(exp, "set")) {
+                        singles.insert(exp);
+                }
+                for (int i=0; i<exp.num_args(); i++) {
+                        get_singleset(exp.arg(i), singles);
+                }
+        }
+}
+
+bool expr_tool::get_singleset_min(z3::expr exp, z3::expr& S) {
+        if (is_fun(exp, "set")) {
+                z3::expr ele = exp.arg(0);
+                if (is_fun(ele, "min") || is_fun(ele, "max")) {
+                        S = ele.arg(0);
+                        return true;
+                }
+        }
+        return false;
+}
+
+
+
+void expr_tool::write_file(std::string fname, z3::expr &formula) {
+        std::ofstream out(fname);
+        out << formula << std::endl;
+        out.close();
 }

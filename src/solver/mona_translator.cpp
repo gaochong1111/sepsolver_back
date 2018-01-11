@@ -15,7 +15,7 @@ std::string mop_strs[] = {"UNDEF",
 void mona_translator::write_to_file(std::string name) {
         // 1. get var
 
-        std::cout << "write to file: " << name << std::endl;
+        // std::cout << "write to file: " << name << std::endl;
         std::ofstream out(name);
 
         out << "ws1s;\n";
@@ -43,6 +43,13 @@ void mona_translator::write_to_file(std::string name) {
         if (so_decl_str != "")
                 out<<"var" << so_decl_str << ";" << std::endl;
 
+        for (auto so_var : so_vars) {
+                std::string var_name = so_var.to_string();
+                if (var_name.find("minus") != -1) {
+                        out << "0 notin " << var_name << ";\n";
+                }
+        }
+
         // 2. formula
         std::set<std::string> set_items;
         std::string formula_str = get_str(m_formula, set_items);
@@ -64,6 +71,9 @@ std::string mona_translator::get_str(z3::expr item, std::set<std::string>& set_i
         if (item.is_app()) {
                 int num_args = item.num_args();
                 if (num_args == 0) {
+                        if (expr_tool::is_fun(item, "emptyset")) {
+                                return "empty";
+                        }
                         return expr_tool::get_mona_name(item);
                 }
                 // operation
@@ -96,8 +106,18 @@ std::string mona_translator::get_str(z3::expr item, std::set<std::string>& set_i
                         }
 
 
-                        if (item1 == "emptyset" || item2 == "emptyset") {
-                                std::string item_str = item1=="emptyset"? item2 : item1;
+                        str.append(item1);
+                        str.append(op_str);
+                        str.append(item2);
+                        if (mop >= MONA_LE && mop <= MONA_IN) {
+                                for (auto tmp : set_items1) {
+                                        str.append(" & empty ~= ").append(tmp);
+                                }
+                        }
+
+                        /*
+                        if (item1 == "empty" || item2 == "empty") {
+                                std::string item_str = item1=="empty"? item2 : item1;
                                 if (mop == MONA_DISTINCT) {
                                         str.append("~");
                                 }
@@ -113,6 +133,7 @@ std::string mona_translator::get_str(z3::expr item, std::set<std::string>& set_i
                                         }
                                 }
                         }
+                        */
                 } else if (num_args == 1) {
                         std::string item1 = get_str(item.arg(0), set_items);
 

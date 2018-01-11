@@ -40,16 +40,9 @@
         ; (> (min S1) 1)
         ; (not (subset S2 S1) )
         ; (distinct E F)
-        (= (min S2) (+ min(S1) 5))
-
-        ;(exists ((S SetInt))
-        ;    (and
-        ;        (> (min S) 0)
-        ;        (exists ((S SetInt))
-        ;              (< (max S) 1)
-        ;        )
-        ;    )
-        ;)
+        ; (>= min(S1) 0)
+        (= (min S2) (+ min(S1) 6))
+        ;(<= (min S1) (0 - 1))
 
         (tobool
             (sls E S1 F S2)
