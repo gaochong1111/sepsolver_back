@@ -37,7 +37,7 @@ void qgdbs_translator::prepare() {
 }
 
 bool qgdbs_translator::get_next(z3::expr& formula) {
-        print_ctx();
+        // print_ctx();
         if (m_index == -1 || !plus_one_ctx()) {
                 m_bctx = -1;
                 formula = translate_formula(m_formula);
@@ -497,17 +497,6 @@ void qgdbs_translator::init_ctx() {
  * @return plus: 0:yes, 1:no
  */
 int qgdbs_translator::plus_one_ctx() {
-        /*
-          for (int i=0; i<m_sovar_ctx.size(); i++) {
-          std::cout << m_sovar_ctx[i];
-          }
-          std::cout << "   ";
-          for (int i=0; i<m_fovar_ctx.size(); i++) {
-          std::cout << m_fovar_ctx[i];
-          }
-          std::cout << "    ";
-          std::cout << m_bctx << std::endl;
-        */
         if (plus_one_foctx() == 0) return 0;
         if (plus_one_soctx() == 0) return 0;
         return 1;

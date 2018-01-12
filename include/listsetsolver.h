@@ -1,6 +1,7 @@
 #ifndef LISTSETSOLVER_H
 #define LISTSETSOLVER_H
 #include "solver.h"
+#include <map>
 
 class listsetsolver :public solver {
 private:
@@ -19,6 +20,10 @@ private:
 
         void display(int matrix[4][4], z3::expr_vector& set_vars, std::string file_name);
         void display(int matrix[4][4]);
+
+        void display_model(std::set<z3::expr, exprcomp>& bool_vars,  std::set<z3::expr, exprcomp>& fo_vars,  std::set<z3::expr, exprcomp>& so_vars,  std::map<std::string, std::string>& model);
+
+        std::string merge_model_val(std::string& minus_val, std::string& plus_val);
 
 public:
 listsetsolver(smt2context& ctx) : solver(ctx) {}

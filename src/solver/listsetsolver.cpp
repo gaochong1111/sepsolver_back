@@ -29,7 +29,7 @@ z3::check_result listsetsolver::check_sat() {
         compute_all_tr_closure();
 
         z3::expr phi_pd = delta_ge1_predicates[0];
-        expr_tool::write_file("tr.smt", phi_pd);
+        // expr_tool::write_file("tr.smt", phi_pd);
 
         z3::expr data(z3_ctx());
         z3::expr space(z3_ctx());
@@ -59,8 +59,16 @@ z3::check_result listsetsolver::check_sat() {
 
         // std::cout << "f_abs: " << f_abs << std::endl;
 
-        expr_tool::write_file("f_abs.smt", f_abs);
+        // expr_tool::write_file("f_abs.smt", f_abs);
 
+        std::set<z3::expr, exprcomp> fo_vars_set;
+        std::set<z3::expr, exprcomp> so_vars_set;
+        std::set<z3::expr, exprcomp> bool_vars_set;
+        // std::cout << "m_formula: " << m_formula << std::endl;
+
+        expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
+        expr_tool::get_first_order_vars(f_abs, fo_vars_set);
+        expr_tool::get_second_order_vars(f_abs, so_vars_set);
 
 
         // translate into N
@@ -69,10 +77,12 @@ z3::check_result listsetsolver::check_sat() {
         translator.prepare();
         z3::expr f_ps_qgdbs_n(z3_ctx());
         int count = 0;
+        std::map<std::string, std::string> model;
+
         while(translator.get_next(f_ps_qgdbs_n)) {
 
                 // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
-                expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
+                // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
 
                 // f_ps_qgdbs_n = f_abs;
 
@@ -83,48 +93,100 @@ z3::check_result listsetsolver::check_sat() {
                 mona_executor mona_exe;
                 mona_exe.set_args("-q");
                 mona_exe.set_name("test.mona");
-                std::string output = mona_exe.execute();
-                //std::cout << "output: \n" << output << std::endl;
+                bool is_sat = mona_exe.execute(model);
+                // std::cout << "sat: " << is_sat << std::endl;
 
-                if (output.find("satisfying") != -1) {
-                        std::cout << "iterator: " << count << std::endl;
-                        std::cout << "output: \n" << output << std::endl;
+                if (is_sat) {
+                        display_model(bool_vars_set, fo_vars_set, so_vars_set, model);
                         count ++;
-                        // break;
                 }
 
-                // break;
         }
 
         std::cout << "sat count: " << count << std::endl;
 
-        /*
-        translator.generate_formula();
-        for (int i=0; i<translator.formula_size(); i++) {
-                z3::expr f_ps_qgdbs_n = translator.get_formula(i);
-                // z3::expr f_ps_qgdbs_n = f_abs;
-
-                // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
-
-                mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
-
-                mona_tl.write_to_file("test.mona");
-
-                mona_executor mona_exe;
-                mona_exe.set_args("-q");
-                mona_exe.set_name("test.mona");
-                std::string output = mona_exe.execute();
-                if (output.find("satisfying") != -1) {
-                        std::cout << "iterator: " << i << std::endl;
-                        std::cout << "output: \n" << output << std::endl;
-                        break;
-                }
-        }
-
-        */
         return z3::sat;
 }
 
+
+/**
+ * display model of f_abs
+ * @param bool_vars, fo_vars, so_vars
+ * @param model : mona model
+ */
+void listsetsolver::display_model(std::set<z3::expr, exprcomp> &bool_vars, std::set<z3::expr, exprcomp> &fo_vars, std::set<z3::expr, exprcomp> &so_vars, std::map<std::string, std::string> &model) {
+        std::string key;
+        std::string value;
+        for (auto b_var : bool_vars) {
+                key = expr_tool::get_mona_name(b_var);
+                value = model[key];
+                std::cout << b_var << " = " << value << std::endl;
+        }
+
+        std::string key_minus;
+        std::string key_plus;
+
+        std::string val1;
+        std::string val2;
+        std::string val;
+        for (auto fo_var : fo_vars) {
+                key = fo_var.to_string();
+                key_minus = key;
+                key_minus.append("_minus");
+                key_plus = key;
+                key_plus.append("_plus");
+
+                val1 = model[key_minus];
+                val2 = model[key_plus];
+
+                val = merge_model_val(val1, val2);
+                std::cout << fo_var << " = " << val << std::endl;
+        }
+
+        for (auto so_var : so_vars) {
+                key = so_var.to_string();
+                key_minus = key;
+                key_minus.append("_minus");
+                key_plus = key;
+                key_plus.append("_plus");
+
+                val1 = model[key_minus];
+                val2 = model[key_plus];
+                val = merge_model_val(val1, val2);
+                std::cout << so_var << " = " << val << std::endl;
+
+        }
+
+}
+
+std::string listsetsolver::merge_model_val(std::string &minus_val, std::string &plus_val) {
+        std::string result="";
+        if (minus_val.find('{') != -1) {
+                result.append("{");
+                int index = minus_val.find('{')+1;
+                int end = minus_val.find('}');
+                if (index < end){
+                        result.append(minus_val.substr(index, end-index));
+                }
+                index = plus_val.find('{')+1;
+                end = plus_val.find('}');
+                if (index < end) {
+                        if (result.length()>1)  result.append(",");
+                        result.append(plus_val.substr(index, end-index));
+                }
+
+                result.append("}");
+
+        } else {
+                if (minus_val == "0") {
+                        result = plus_val;
+                } else {
+                        result.append(minus_val);
+                }
+        }
+        return result;
+
+}
 
 
 /**
@@ -277,6 +339,8 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                         // logger() << "or_1: " << or_1 << std::endl;
                         z3::expr ufld_2 = phi_pd_ge_2;
                         or_2 = source_bool && source_int>=1 && ufld_2.substitute(f_args, a_args);
+                        // .........................
+                        or_2 = !z3::forall(gamma_12, !or_2);
                 }
 
                 // 1.3 or
@@ -489,18 +553,18 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
 
                 /*
 
-                z3::expr phi_r2_01 = phi_r2_items[0]; // min(S1) min(S2)
+                  z3::expr phi_r2_01 = phi_r2_items[0]; // min(S1) min(S2)
 
-                // tr_f = tr_f && (phi_r2_01.substitute(src, dst));
-                // tr_f = tr_f && (phi_r2_01.substitute(src1, dst1));
+                  // tr_f = tr_f && (phi_r2_01.substitute(src, dst));
+                  // tr_f = tr_f && (phi_r2_01.substitute(src1, dst1));
 
-                z3::expr phi_r2_23 = phi_r2_items[5]; // max(S1) max(S2)
+                  z3::expr phi_r2_23 = phi_r2_items[5]; // max(S1) max(S2)
 
-                if (case_i == 2) {
-                        item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
-                } else {
-                        item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
-                }
+                  if (case_i == 2) {
+                  item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
+                  } else {
+                  item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
+                  }
                 */
                 tr_f = tr_f && item;
 
@@ -679,12 +743,12 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
                 phi_r2_items.push_back(phi_23);
 
                 /*
-                std::cout << "phi_01: " << phi_01 << std::endl;
-                std::cout << "phi_02: " << phi_02 << std::endl;
-                std::cout << "phi_03: " << phi_03 << std::endl;
-                std::cout << "phi_12: " << phi_12 << std::endl;
-                std::cout << "phi_13: " << phi_13 << std::endl;
-                std::cout << "phi_23: " << phi_23 << std::endl;
+                  std::cout << "phi_01: " << phi_01 << std::endl;
+                  std::cout << "phi_02: " << phi_02 << std::endl;
+                  std::cout << "phi_03: " << phi_03 << std::endl;
+                  std::cout << "phi_12: " << phi_12 << std::endl;
+                  std::cout << "phi_13: " << phi_13 << std::endl;
+                  std::cout << "phi_23: " << phi_23 << std::endl;
                 */
 
 
