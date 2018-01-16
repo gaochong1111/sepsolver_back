@@ -396,6 +396,28 @@ bool expr_tool::get_singleset_min(z3::expr exp, z3::expr& S) {
 }
 
 
+void expr_tool::get_min_max_items(z3::expr exp, std::set<z3::expr, exprcomp> &items) {
+        if (exp.is_app()) {
+                if (is_fun(exp, "min") || is_fun(exp, "max")) {
+                        if (!exp.arg(0).is_const()) {
+                                items.insert(exp.arg(0));
+                        }
+                } else {
+                        for (int i=0; i<exp.num_args(); i++) {
+                                get_min_max_items(exp.arg(i), items);
+                        }
+                }
+        }
+}
+
+
+z3::expr expr_tool::mk_bottom(z3::context &ctx) {
+        return ctx.bool_const("bottom");
+}
+
+bool expr_tool::is_bottom(z3::expr exp) {
+        return exp.get_sort().is_bool() && exp.to_string() == "bottom";
+}
 
 void expr_tool::write_file(std::string fname, z3::expr &formula) {
         std::ofstream out(fname);

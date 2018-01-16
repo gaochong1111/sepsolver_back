@@ -72,6 +72,9 @@ public:
         static void write_file(std::string fname, z3::expr& formula);
         static void get_singleset(z3::expr exp, std::set<z3::expr, exprcomp>& singles);
         static bool get_singleset_min(z3::expr exp, z3::expr& S);
+        static void get_min_max_items(z3::expr exp, std::set<z3::expr, exprcomp>& items);
+        static z3::expr mk_bottom(z3::context& ctx);
+        static bool is_bottom(z3::expr exp);
 
 };
 

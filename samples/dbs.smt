@@ -14,8 +14,10 @@
                     (and
                         ; (= ?S ?S2)
                         (= ?S (setunion ?S2 (set (min ?S))))
-                        ; (< (max ?S) (+ (min ?S) 10))
                         (= (min ?S2) (+ (min ?S) 1))
+
+                        ; (< (max ?S) (+ (min ?S) 10))
+                        ; (= ?S (setunion ?S2 (set (min ?S))))
                         ; (= (max ?S2) (- (max ?S) 1))
                         ; (<= (min ?S2) (- (min ?S) 2))
                         ; (> (min ?S2) (min ?S))
@@ -40,9 +42,9 @@
         ; (> (min S1) 1)
         ; (not (subset S2 S1) )
         ; (distinct E F)
-        ; (>= min(S1) 0)
-        (= (min S2) (+ min(S1) 6))
-        ;(<= (min S1) (0 - 1))
+        ; (>= min(S1) )
+        ; (= (min S2) (+ min(S1) 5))
+        (= (max S2) 2)
 
         (tobool
             (sls E S1 F S2)
