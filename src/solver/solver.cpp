@@ -128,11 +128,13 @@ int solver::index_of_pred(std::string &pred_name) {
 z3::expr solver::abs_space(z3::expr &space, z3::expr_vector& new_bools) {
     // 1.space atoms -> abs (\phi_sigma)
     z3::expr f_abs(z3_ctx());
+    z3::expr b_false = z3_ctx().bool_val(false);
     for (int i=0; i<space.num_args(); i++) {
         //1.1 fetch atom
         z3::expr atom = space.arg(i);
 
         z3::expr atom_f = pred2abs(atom, i, new_bools);
+        if (atom_f.hash() == b_false.hash()) return b_false;
 
         // 1.5 add atom_f to f_abs
         if (Z3_ast(f_abs) == 0) {
