@@ -169,7 +169,8 @@ z3::expr solver::abs_phi_star(z3::expr_vector& new_bools) {
 
             if (z1_i != z2_i) {
                 // add imply atom
-                z3::expr imply = implies((z3_ctx().int_const(z1_name.c_str()) == z3_ctx().int_const(z2_name.c_str()) && new_bools[i]), !new_bools[j]);
+                // z3::expr imply = implies( (z3_ctx().int_const(z1_name.c_str()) == z3_ctx().int_const(z2_name.c_str()) && new_bools[i]), !new_bools[j]);
+                z3::expr imply = ! ((z3_ctx().int_const(z1_name.c_str()) == z3_ctx().int_const(z2_name.c_str()) && new_bools[i]) && new_bools[j]);
                 // if (Z3_ast(phi_star) == 0) {
                 //    phi_star = imply;
                 // } else {

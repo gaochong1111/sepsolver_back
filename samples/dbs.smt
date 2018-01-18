@@ -16,9 +16,9 @@
                         ; (= ?S ?S2)
                         (= ?S (setunion ?S2 (set (min ?S))))
                         (= (min ?S2) (+ (min ?S) 1))
-                        (<= (max ?S) (+ (min ?S) 10))
+                        ; (<= (max ?S) (+ (min ?S) ))
                         ; (= ?S (setunion ?S2 (set (min ?S))))
-                        ; (= (max ?S2) (- (max ?S) 1))
+                        ;(= (max ?S) (+ (max ?S2) 3))
                         ; (<= (min ?S2) (- (min ?S) 2))
                         ; (> (min ?S2) (min ?S))
                         (tobool (ssep
@@ -34,20 +34,32 @@
 
 (declare-fun S1() SetInt)
 (declare-fun S2() SetInt)
+(declare-fun S3() SetInt)
+(declare-fun S4() SetInt)
+(declare-fun S() SetInt)
+
 
 (declare-fun E() Sls_t)
 (declare-fun F() Sls_t)
+(declare-fun E1() Sls_t)
+(declare-fun F1() Sls_t)
+
 
 (assert (and
         ; (> (min S1) 1)
         ; (not (subset S2 S1) )
         ; (distinct E F)
         ; (>= min(S1) )
-        (= (min S2) (+ min(S1) 7))
+        ; (= S2 (setminus S S3))
+        (= (min S2)  (+ (min S1) 7))
+        (= (min S1) (+ (max S3) 1))
+        (= (min S4)  (+ (min S3) 8))
+
         ; (= (max S2) 2)
 
         (tobool
-            (sls E S1 F S2)
+            (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
+
         )
 )
 

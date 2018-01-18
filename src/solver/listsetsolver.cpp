@@ -56,6 +56,7 @@ z3::check_result listsetsolver::check_sat() {
 
                 // std::cout << "new bool: " << new_bools << std::endl;
                 star_abs = abs_phi_star(new_bools);
+                std::cout << "star_abs: " << star_abs << std::endl;
         }
 
         // std::cout << "space_abs: " << space_abs << std::endl;
@@ -96,7 +97,10 @@ z3::check_result listsetsolver::check_sat() {
                 z3::expr add_item = z3::mk_and(and_items);
                 f_abs = f_abs.substitute(srcs, dsts);
                 f_abs = f_abs && add_item;
-                f_abs = !z3::forall(dsts, !f_abs);
+                // f_abs = !z3::forall(dsts, !f_abs);
+
+                expr_tool::write_file("f_abs.smt", f_abs);
+
         }
 
 
@@ -828,7 +832,8 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
 
 
 
-        // display(matrix, set_vars, "str_phi_r.dot");
+        //display(matrix, set_vars, "str_phi_r.dot");
+        // exit(-1);
         return case_i;
 }
 
