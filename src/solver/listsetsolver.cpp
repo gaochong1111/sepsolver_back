@@ -29,7 +29,7 @@ z3::check_result listsetsolver::check_sat() {
         compute_all_tr_closure();
 
         z3::expr phi_pd = delta_ge1_predicates[0];
-        expr_tool::write_file("tr.smt", phi_pd);
+        // expr_tool::write_file("tr.smt", phi_pd);
 
         z3::expr data(z3_ctx());
         z3::expr space(z3_ctx());
@@ -65,7 +65,7 @@ z3::check_result listsetsolver::check_sat() {
 
         // std::cout << "f_abs: " << f_abs << std::endl;
 
-        expr_tool::write_file("f_abs.smt", f_abs);
+        // expr_tool::write_file("f_abs.smt", f_abs);
 
         std::set<z3::expr, exprcomp> fo_vars_set;
         std::set<z3::expr, exprcomp> so_vars_set;
@@ -113,7 +113,7 @@ z3::check_result listsetsolver::check_sat() {
         while(translator.get_next(f_ps_qgdbs_n)) {
 
                 // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
-                expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
+                // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
 
                 // f_ps_qgdbs_n = f_abs;
 

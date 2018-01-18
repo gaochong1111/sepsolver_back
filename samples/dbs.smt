@@ -16,7 +16,7 @@
                         ; (= ?S ?S2)
                         (= ?S (setunion ?S2 (set (min ?S))))
                         (= (min ?S2) (+ (min ?S) 1))
-                        ; (<= (max ?S) (+ (min ?S) 10))
+                        (<= (max ?S) (+ (min ?S) 10))
                         ; (= ?S (setunion ?S2 (set (min ?S))))
                         ; (= (max ?S2) (- (max ?S) 1))
                         ; (<= (min ?S2) (- (min ?S) 2))
