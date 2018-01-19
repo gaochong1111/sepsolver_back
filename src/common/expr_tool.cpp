@@ -419,6 +419,12 @@ bool expr_tool::is_bottom(z3::expr exp) {
         return exp.get_sort().is_bool() && exp.to_string() == "bottom";
 }
 
+std::string expr_tool::get_pair(std::string pair1, std::string pair2) {
+        std::string result = pair1;
+        result.append(",").append(pair2);
+        return result;
+}
+
 void expr_tool::write_file(std::string fname, z3::expr &formula) {
         std::ofstream out(fname);
         out << formula << std::endl;

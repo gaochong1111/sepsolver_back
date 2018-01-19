@@ -35,6 +35,18 @@ z3::check_result listsetsolver::check_sat() {
         z3::expr space(z3_ctx());
         z3::expr formula = m_ctx.get_negf();
 
+
+
+        std::set<z3::expr, exprcomp> fo_vars_set;
+        std::set<z3::expr, exprcomp> so_vars_set;
+        std::set<z3::expr, exprcomp> bool_vars_set;
+        // std::cout << "m_formula: " << m_formula << std::endl;
+
+        expr_tool::get_zero_order_vars(formula, bool_vars_set);
+        expr_tool::get_first_order_vars(formula, fo_vars_set);
+        expr_tool::get_second_order_vars(formula, so_vars_set);
+
+
         get_data_space(formula, data, space);
 
 
@@ -56,26 +68,18 @@ z3::check_result listsetsolver::check_sat() {
 
                 // std::cout << "new bool: " << new_bools << std::endl;
                 star_abs = abs_phi_star(new_bools);
-                std::cout << "star_abs: " << star_abs << std::endl;
+                // std::cout << "star_abs: " << star_abs << std::endl;
         }
 
         // std::cout << "space_abs: " << space_abs << std::endl;
 
         f_abs = f_abs && space_abs && star_abs;
 
+        // std::cout << "m_set_pairs size: " << m_set_pairs.size() << std::endl;
 
         // std::cout << "f_abs: " << f_abs << std::endl;
 
         // expr_tool::write_file("f_abs.smt", f_abs);
-
-        std::set<z3::expr, exprcomp> fo_vars_set;
-        std::set<z3::expr, exprcomp> so_vars_set;
-        std::set<z3::expr, exprcomp> bool_vars_set;
-        // std::cout << "m_formula: " << m_formula << std::endl;
-
-        expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
-        expr_tool::get_first_order_vars(f_abs, fo_vars_set);
-        expr_tool::get_second_order_vars(f_abs, so_vars_set);
 
         std::set<z3::expr, exprcomp> mm_items;
         expr_tool::get_min_max_items(f_abs, mm_items);
@@ -108,11 +112,16 @@ z3::check_result listsetsolver::check_sat() {
 
         // translate into N
         qgdbs_translator translator(z3_ctx(), f_abs);
+        std::set<z3::expr, exprcomp> so_vars_set1;
+        expr_tool::get_second_order_vars(f_abs, so_vars_set1);
 
+        translator.set_first_order_vars(fo_vars_set);
+        translator.set_second_order_vars(so_vars_set1);
         translator.prepare();
         z3::expr f_ps_qgdbs_n(z3_ctx());
         int count = 0;
         std::map<std::string, std::string> model;
+
 
         while(translator.get_next(f_ps_qgdbs_n)) {
 
@@ -120,29 +129,43 @@ z3::check_result listsetsolver::check_sat() {
                 // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
 
                 // f_ps_qgdbs_n = f_abs;
+                int skip_flag = false;
 
-                mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
+                for (int i=0; i<m_set_pairs.size(); i++) {
 
-                mona_tl.write_to_file("test.mona");
-
-                mona_executor mona_exe;
-                mona_exe.set_args("-q");
-                mona_exe.set_name("test.mona");
-                std::cout << "execute mona -q test.mona\n";
-                bool is_sat = mona_exe.execute(model);
-                // std::cout << "sat: " << is_sat << std::endl;
-
-                if (is_sat) {
-                        translator.print_ctx();
-                        display_model(bool_vars_set, fo_vars_set, so_vars_set, model);
-                        count ++;
-                        // break;
-                        // return z3::sat;
-                } else {
-                        translator.print_ctx();
+                        int ctx_1 = translator.get_ctx(m_set_pairs[i].first);
+                        int ctx_2 = translator.get_ctx(m_set_pairs[i].second);
+                        // std::cout << "ctx_1: " << ctx_1 << ", " << ctx_2 << std::endl;
+                        if (ctx_2 != 2 && ctx_2 != ctx_1) {
+                                skip_flag = true;
+                        }
                 }
-                // break;
 
+                translator.print_ctx();
+                std::cout << "skip: " << skip_flag << std::endl;
+
+                if (!skip_flag) {
+                        mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
+
+                        mona_tl.write_to_file("test.mona");
+
+                        mona_executor mona_exe;
+                        mona_exe.set_args("-q");
+                        mona_exe.set_name("test.mona");
+                        std::cout << "execute mona -q test.mona\n";
+                        bool is_sat = mona_exe.execute(model);
+                        // std::cout << "sat: " << is_sat << std::endl;
+
+                        if (is_sat) {
+                                translator.print_ctx();
+                                display_model(bool_vars_set, fo_vars_set, so_vars_set, model);
+                                count ++;
+                                // break;
+                                // return z3::sat;
+                        } else {
+                                translator.print_ctx();
+                        }
+                }
         }
 
         std::cout << "sat count: " << count << std::endl;
@@ -278,9 +301,15 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
                 z3::expr b_false = z3_ctx().bool_val(false);
                 if (phi_pd.hash() == b_false.hash()) return b_false;
+
                 z3::expr_vector args = pred.get_pars();
 
                 z3::expr phi_p = pred.get_phi_p(z3_ctx());
+                std::vector<int> sub_r; // sub_r[i]=1 -> alpha_i sub beta_i
+                pred.get_subset_relation(sub_r);
+
+
+
                 z3::expr_vector gamma_1(z3_ctx()); // new variables
                 z3::expr_vector gamma_2(z3_ctx());
                 z3::expr_vector gamma_12(z3_ctx());
@@ -292,6 +321,7 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 z3::expr dest_int = z3_ctx().int_const(atom.arg(size/2).to_string().c_str());
                 or_0 = !source_bool && (source_int == dest_int);
                 for (int j=1; j<size/2;j++) {
+                        // compute or_0
                         if (expr_tool::is_location(atom.arg(j))) {
                                 z3::expr arg_j_int = z3_ctx().int_const(atom.arg(j).to_string().c_str());
                                 z3::expr arg_j2_int = z3_ctx().int_const(atom.arg(j+size/2).to_string().c_str());
@@ -299,6 +329,7 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                         } else {
                                 or_0 = or_0 && (atom.arg(j)==atom.arg(j+size/2));
 
+                                // introduce new set vars
                                 alpha.push_back(args[j]);
                                 beta.push_back(args[j+size/2]);
                                 std::string gamma1_name = atom.arg(j).to_string();
@@ -310,6 +341,33 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                                 gamma2_name.append("_2");
                                 z3::expr gamma2_j = z3_ctx().constant(gamma2_name.c_str(), atom.arg(j).get_sort());
                                 gamma_2.push_back(gamma2_j);
+
+
+                                // set sub pair
+                                if (sub_r[j-1] != -1) {
+
+
+                                        if (sub_r[j-1] == 0) {
+
+                                                // alpha_j supersub beta_j
+                                                // m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(atom.arg(j+size/2), atom.arg(j)));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(gamma1_j, atom.arg(j)));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(gamma2_j, gamma1_j));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(atom.arg(j+size/2), gamma2_j));
+
+
+                                        } else {
+                                                // m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(atom.arg(j), atom.arg(j+size/2)));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(atom.arg(j), gamma1_j));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(gamma1_j, gamma2_j));
+                                                m_set_pairs.push_back(std::pair<z3::expr, z3::expr>(gamma2_j, atom.arg(j+size/2)));
+
+
+
+
+
+                                        }
+                                }
                         }
                 }
 
@@ -658,13 +716,13 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
                 succ_f = succ_f && z3::forall(pars2, all2_f);
 
                 // z3::expr all1_f = z3::implies(succ_f, all_body.substitute(src3, pars1));
-                 z3::expr all1_f = !(succ_f && !all_body.substitute(src3, pars1));
+                z3::expr all1_f = !(succ_f && !all_body.substitute(src3, pars1));
 
                 //std::cout << "forall: " << all1_f << std::endl;
                 //exit(-1);
 
-                 // forall []
-                 tr_f = tr_f && z3::forall(pars1, all1_f);
+                // forall []
+                tr_f = tr_f && z3::forall(pars1, all1_f);
 
                 tr_f = !z3::forall(pars, !tr_f);
 

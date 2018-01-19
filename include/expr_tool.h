@@ -76,6 +76,8 @@ public:
         static z3::expr mk_bottom(z3::context& ctx);
         static bool is_bottom(z3::expr exp);
 
+        static std::string get_pair(std::string pair1, std::string pair2);
+
 };
 
 

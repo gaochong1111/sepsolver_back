@@ -104,3 +104,41 @@ z3::expr predicate::get_phi_p(z3::context& ctx) {
         }
         return delta;
 }
+/**
+ * list with set: get subset relation of alpha set with beta set
+ * @param sub_r:  [alpha_i sub beta_i -> 1] alpha_i sub beta_i
+ */
+void predicate::get_subset_relation(std::vector<int> &sub_r) {
+        if (is_listset()) {
+                z3::expr delta = get_rule(0).get_data();
+                int st_size = size_of_static_parameters();
+                int size = m_pars.size() - st_size;
+
+                std::vector<z3::expr> alpha;
+                for (int i=1; i<size/2; i++) {
+                        alpha.push_back(m_pars[i]);
+                        sub_r.push_back(-1);
+                }
+                for (int i=0; i<delta.num_args(); i++) {
+                        z3::expr item_i = delta.arg(i);
+                        if (item_i.num_args() == 2) {
+                                z3::expr s1 = item_i.arg(0);
+                                int idx = -1;
+                                int sub = 0;
+                                if (expr_tool::is_setint(s1) && s1.is_var()) {
+                                        z3::expr s2 = item_i.arg(1);
+                                        if (s2.num_args() == 2) {
+                                                s2 = s2.arg(0);
+                                        }
+                                        idx = expr_tool::index_of_exp(s2, alpha);
+                                        sub = 1;
+                                } else {
+                                        idx = expr_tool::index_of_exp(s1, alpha);
+                                }
+                                if (idx != -1) {
+                                        sub_r[idx] = sub;
+                                }
+                        }
+                }
+        }
+}

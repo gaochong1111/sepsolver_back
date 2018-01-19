@@ -19,14 +19,14 @@ z3::expr qgdbs_translator::get_formula(int ectx) {
 
 void qgdbs_translator::prepare() {
         // 1. get first order vars
-        std::set<z3::expr, exprcomp> fo_vars_set;
-        std::set<z3::expr, exprcomp> so_vars_set;
+        //std::set<z3::expr, exprcomp> fo_vars_set;
+        //std::set<z3::expr, exprcomp> so_vars_set;
         // std::cout << "m_formula: " << m_formula << std::endl;
 
-        expr_tool::get_first_order_vars(m_formula, fo_vars_set);
-        expr_tool::expr_set_to_vec(fo_vars_set, m_first_order_vars);
-        expr_tool::get_second_order_vars(m_formula, so_vars_set);
-        expr_tool::expr_set_to_vec(so_vars_set, m_second_order_vars);
+        //expr_tool::get_first_order_vars(m_formula, fo_vars_set);
+        // expr_tool::expr_set_to_vec(fo_vars_set, m_first_order_vars);
+        //expr_tool::get_second_order_vars(m_formula, so_vars_set);
+        //expr_tool::expr_set_to_vec(so_vars_set, m_second_order_vars);
 
         init_ctx();
 
@@ -61,6 +61,15 @@ void qgdbs_translator::print_ctx() {
                 std::cout << m_fovar_ctx[i];
         }
         std::cout << std::endl;
+}
+
+
+void qgdbs_translator::set_first_order_vars(std::set<z3::expr, exprcomp> &fo_vars_set) {
+        expr_tool::expr_set_to_vec(fo_vars_set, m_first_order_vars);
+}
+
+void qgdbs_translator::set_second_order_vars(std::set<z3::expr, exprcomp> &so_vars_set) {
+        expr_tool::expr_set_to_vec(so_vars_set, m_second_order_vars);
 }
 
 /**
@@ -527,7 +536,7 @@ int qgdbs_translator::get_ctx(z3::expr exp) {
         index = expr_tool::index_of_exp(exp, m_second_order_vars);
         if (index != -1)
                 return m_sovar_ctx[index];
-        return -1;
+        return 0;
 }
 
 void qgdbs_translator::init_ctx() {
@@ -546,7 +555,7 @@ void qgdbs_translator::init_ctx() {
  * @return plus: 0:yes, 1:no
  */
 int qgdbs_translator::plus_one_ctx() {
-        //if (plus_one_foctx() == 0) return 0;
+        if (plus_one_foctx() == 0) return 0;
         if (plus_one_soctx() == 0) return 0;
         return 1;
 }

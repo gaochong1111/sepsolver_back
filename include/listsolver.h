@@ -6,6 +6,7 @@
 #include "graph.h"
 
 class listsolver :public solver {
+
 private:
 
         // check sat

@@ -50,7 +50,6 @@ predicate(z3::func_decl fun, z3::expr_vector pars, z3::expr base_rule)
         }
 
         bool is_tree();
-
         bool is_list() ;
         bool is_listset() ;
 
@@ -59,7 +58,10 @@ predicate(z3::func_decl fun, z3::expr_vector pars, z3::expr base_rule)
 
         z3::expr get_plfld();
 
+        // list with set phi_p
         z3::expr get_phi_p(z3::context& ctx);
+        void get_subset_relation(std::vector<int>& sub_r);
+
 
         friend std::ostream& operator<<(std::ostream& out, predicate& p) ;
 };

@@ -34,7 +34,6 @@ private:
 
         void init_ctx();
 
-        int get_ctx(z3::expr exp);
 
         bool has_quantified_var(z3::expr delta, std::set<z3::expr, exprcomp>& var_set);
         z3::expr translate_formula(z3::expr formula);
@@ -56,6 +55,10 @@ qgdbs_translator(z3::context& z3_ctx, z3::expr formula):m_ctx(z3_ctx), m_formula
         bool get_next(z3::expr& formula);
         void prepare();
         void print_ctx();
+        void set_first_order_vars(std::set<z3::expr, exprcomp>& fo_vars_set);
+        void set_second_order_vars(std::set<z3::expr, exprcomp>& so_vars_set);
+        int get_ctx(z3::expr exp);
+
 
 
 };

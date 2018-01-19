@@ -52,14 +52,14 @@
         ; (>= min(S1) )
         ; (= S2 (setminus S S3))
         (= (min S2)  (+ (min S1) 7))
-        (= (min S1) (+ (max S3) 1))
-        (= (min S4)  (+ (min S3) 8))
+        ; (= (min S1) (+ (max S3) 1))
+        ;(= (min S4)  (+ (min S3) 8))
 
         ; (= (max S2) 2)
 
         (tobool
-            (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
-
+            ;(ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
+            (sls E S1 F S2)
         )
 )
 

@@ -5,6 +5,8 @@
 
 class listsetsolver :public solver {
 private:
+        std::vector<std::pair<z3::expr, z3::expr> > m_set_pairs;
+private:
         void compute_all_tr_closure();
         z3::expr compute_tr_closure(predicate& pred);
         z3::expr compute_tr_by_case(int case_i, z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
