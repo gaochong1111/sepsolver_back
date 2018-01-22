@@ -583,7 +583,7 @@ int qgdbs_translator::plus_one_soctx() {
                 cur = m_sovar_ctx[i] + c;
                 c=0;
                 m_sovar_ctx[i] = cur;
-                if (cur == 3) {
+                if (cur == 4) {
                         c = 1;
                         m_sovar_ctx[i] = 0;
                 }

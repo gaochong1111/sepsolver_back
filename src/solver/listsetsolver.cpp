@@ -42,7 +42,6 @@ z3::check_result listsetsolver::check_sat() {
         std::set<z3::expr, exprcomp> bool_vars_set;
         // std::cout << "m_formula: " << m_formula << std::endl;
 
-        expr_tool::get_zero_order_vars(formula, bool_vars_set);
         expr_tool::get_first_order_vars(formula, fo_vars_set);
         expr_tool::get_second_order_vars(formula, so_vars_set);
 
@@ -75,9 +74,16 @@ z3::check_result listsetsolver::check_sat() {
 
         f_abs = f_abs && space_abs && star_abs;
 
-        // std::cout << "m_set_pairs size: " << m_set_pairs.size() << std::endl;
+        std::set<z3::expr, exprcomp> fo_vars_set1;
+        // get bool vars in model
+        expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
+        expr_tool::get_first_order_vars(f_abs, fo_vars_set1);
 
-        // std::cout << "f_abs: " << f_abs << std::endl;
+
+
+
+
+
 
         // expr_tool::write_file("f_abs.smt", f_abs);
 
@@ -108,8 +114,6 @@ z3::check_result listsetsolver::check_sat() {
         }
 
 
-
-
         // translate into N
         qgdbs_translator translator(z3_ctx(), f_abs);
         std::set<z3::expr, exprcomp> so_vars_set1;
@@ -122,12 +126,17 @@ z3::check_result listsetsolver::check_sat() {
         int count = 0;
         std::map<std::string, std::string> model;
 
+        int total_ctx = 0;
+        int valid_ctx = 0;
+
+
 
         while(translator.get_next(f_ps_qgdbs_n)) {
 
                 // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
                 // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
 
+                total_ctx++;
                 // f_ps_qgdbs_n = f_abs;
                 int skip_flag = false;
 
@@ -145,6 +154,9 @@ z3::check_result listsetsolver::check_sat() {
                 std::cout << "skip: " << skip_flag << std::endl;
 
                 if (!skip_flag) {
+                        valid_ctx++;
+
+                        // continue;
                         mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
 
                         mona_tl.write_to_file("test.mona");
@@ -157,10 +169,10 @@ z3::check_result listsetsolver::check_sat() {
                         // std::cout << "sat: " << is_sat << std::endl;
 
                         if (is_sat) {
-                                translator.print_ctx();
-                                display_model(bool_vars_set, fo_vars_set, so_vars_set, model);
+                                // translator.print_ctx();
+                                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
                                 count ++;
-                                // break;
+                                break;
                                 // return z3::sat;
                         } else {
                                 translator.print_ctx();
@@ -168,6 +180,8 @@ z3::check_result listsetsolver::check_sat() {
                 }
         }
 
+        std::cout << "total_ctx: " << total_ctx << std::endl;
+        std::cout << "valid_ctx: " << valid_ctx << std::endl;
         std::cout << "sat count: " << count << std::endl;
 
         return z3::sat;
@@ -204,6 +218,8 @@ void listsetsolver::display_model(std::set<z3::expr, exprcomp> &bool_vars, std::
 
                 val1 = model[key_minus];
                 val2 = model[key_plus];
+
+                // std::cout << "val1: " << (val1=="") << std::endl;
 
                 val = merge_model_val(val1, val2);
                 std::cout << fo_var << " = " << val << std::endl;
@@ -245,10 +261,12 @@ std::string listsetsolver::merge_model_val(std::string &minus_val, std::string &
                 result.append("}");
 
         } else {
-                if (minus_val == "0") {
+                if (minus_val == "") {
+                        result = plus_val;
+                } else if (minus_val == "0") {
                         result = plus_val;
                 } else {
-                        result.append(minus_val);
+                        result = minus_val;
                 }
         }
         return result;
