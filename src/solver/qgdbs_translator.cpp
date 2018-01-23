@@ -36,19 +36,23 @@ void qgdbs_translator::prepare() {
 
 }
 
-bool qgdbs_translator::get_next(z3::expr& formula) {
+bool qgdbs_translator::get_next() {
         // print_ctx();
         if (m_index == -1 || !plus_one_ctx()) {
                 // m_bctx = -1;
                 // std::cout << "m_bounds: " << m_bounds.size() << std::endl;
-                formula = translate_formula(m_formula);
-                z3::expr ectx_exp = ectx_to_expr();
-                formula = formula && ectx_exp;
                 m_index++;
                 return true;
         }
 
         return false;
+}
+
+
+void qgdbs_translator::translate_formula_ctx(z3::expr& formula) {
+        formula = translate_formula(m_formula);
+        z3::expr ectx_exp = ectx_to_expr();
+        formula = formula && ectx_exp;
 }
 
 void qgdbs_translator::print_ctx() {

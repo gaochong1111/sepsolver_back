@@ -52,12 +52,15 @@ qgdbs_translator(z3::context& z3_ctx, z3::expr formula):m_ctx(z3_ctx), m_formula
         z3::expr generate_formula();
         int formula_size();
         z3::expr get_formula(int i);
-        bool get_next(z3::expr& formula);
+        bool get_next();
+
+        void translate_formula_ctx(z3::expr& formula);
         void prepare();
         void print_ctx();
         void set_first_order_vars(std::set<z3::expr, exprcomp>& fo_vars_set);
         void set_second_order_vars(std::set<z3::expr, exprcomp>& so_vars_set);
         int get_ctx(z3::expr exp);
+
 
 
 

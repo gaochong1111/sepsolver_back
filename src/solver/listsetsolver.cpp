@@ -131,11 +131,12 @@ z3::check_result listsetsolver::check_sat() {
 
 
 
-        while(translator.get_next(f_ps_qgdbs_n)) {
+        while(translator.get_next()) {
 
                 // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
                 // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
 
+                translator.print_ctx();
                 total_ctx++;
                 // f_ps_qgdbs_n = f_abs;
                 int skip_flag = false;
@@ -150,12 +151,13 @@ z3::check_result listsetsolver::check_sat() {
                         }
                 }
 
-                translator.print_ctx();
                 std::cout << "skip: " << skip_flag << std::endl;
+                // continue;
 
                 if (!skip_flag) {
                         valid_ctx++;
 
+                        translator.translate_formula_ctx(f_ps_qgdbs_n);
                         // continue;
                         mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
 
@@ -172,7 +174,7 @@ z3::check_result listsetsolver::check_sat() {
                                 // translator.print_ctx();
                                 display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
                                 count ++;
-                                break;
+                                // break;
                                 // return z3::sat;
                         } else {
                                 translator.print_ctx();
