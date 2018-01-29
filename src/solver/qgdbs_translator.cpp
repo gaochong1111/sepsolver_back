@@ -217,42 +217,6 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                         if (expr_tool::is_bottom(tr_minus0) || expr_tool::is_bottom(tr_minus1) ||
                             expr_tool::is_bottom(tr_plus0) || expr_tool::is_bottom(tr_plus1)) return m_ctx.bool_val(false);
 
-                        /*
-                          std::set<z3::expr, exprcomp> singles;
-                          z3::expr empty = expr_tool::mk_emptyset(m_ctx);
-                          expr_tool::get_singleset(formula, singles); // get singles
-
-                          z3::expr plus_empty = m_ctx.bool_val(true); //
-                          z3::expr minus_empty = m_ctx.bool_val(true);
-
-                          z3::expr_vector srcs_plus(m_ctx);
-                          z3::expr_vector dsts_plus(m_ctx);
-                          z3::expr_vector srcs_minus(m_ctx);
-                          z3::expr_vector dsts_minus(m_ctx);
-
-
-                          // single {min or max}
-                          for (auto single : singles) {
-                          z3::expr S(m_ctx);
-                          if (expr_tool::get_singleset_min(single, S)) {
-                          z3::expr plus_s = translate_formula_plus(S);
-                          z3::expr minus_s = translate_formula_minus(S);
-                          plus_empty = plus_empty && (plus_s == empty);
-                          minus_empty = minus_empty && (minus_s == empty);
-
-                          z3::expr plus_single = translate_formula_plus(single);
-                          z3::expr minus_single = translate_formula_minus(single);
-
-                          srcs_plus.push_back(plus_single);
-                          dsts_plus.push_back(empty);
-
-                          srcs_minus.push_back(minus_single);
-                          dsts_minus.push_back(empty);
-
-                          }
-                          }
-                        */
-
 
                         z3::expr and_1(m_ctx);
                         z3::expr and_2(m_ctx);
@@ -269,22 +233,6 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                         } else {
                                 std::cout << "NO SUPPORT!\n";
                         }
-
-                        /*
-                          z3::expr f = formula;
-
-                          if (srcs_plus.size() > 0) {
-                          // std::cout << "formula: " << formula << std::endl;
-                          //std::cout << "srcs_plus: " << srcs_plus << std::endl;
-                          //std::cout << "src_minus: " << srcs_minus << std::endl;
-                          z3::expr or_2 = and_2.substitute(srcs_plus, dsts_plus) && plus_empty;
-                          z3::expr or_1 = and_1.substitute(srcs_minus, dsts_minus) && minus_empty;
-                          // std::cout << "or_1: " << or_1 << std::endl;
-                          //std::cout << "or_2: " << or_2 << std::endl;
-                          and_1 = and_1 || or_1;
-                          and_2 = and_2 || or_2;
-                          }
-                        */
 
                         result = and_1 && and_2;
 
@@ -354,15 +302,20 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                                 // table 2
                                 // t_i_1, R, c
                                 result = translate_qgdbs_minus(t_i_1, R, c);
-                        } else if (case_i == 2) {
+                        } else if (case_i <= 3) {
                                 // table 3
-                                // t_i_1 R, t_i_2 c
-                                // std::cout << "ti1: " << t_i_1 << " " << R <<  " , ti2: " << t_i_2 << ", c: " << c << std::endl;
-                                result = translate_qgdbs_minus(t_i_1, R, t_i_2, c);
-                        } else if (case_i == 3){
-                                // table 4
-                                // t_i_1 R, t_i_2 c
-                                result = translate_qgdbs_minus(t_i_1, R, t_i_2, c);
+                                // t_i_1 R t_i_2 + c
+                                // std::cout << "\natom: " << t_i_1 << " " << R <<  " " << t_i_2 << " + " << c << std::endl;
+                                if (c < 0) {
+                                        // t_i_1 R t_i_2 - c ==>
+                                        if (R == "<=") R = ">=";
+                                        else if (R == ">=") R = "<=";
+                                        c = -c;
+                                        result = translate_qgdbs_minus(t_i_2, R, t_i_1, c);
+                                } else {
+                                        result = translate_qgdbs_minus_new(t_i_1, R, t_i_2, c);
+                                }
+                                // std::cout << "tr_ectx: " << result << std::endl;
                         } else {
                                 // trival TODO
                                 for (auto var : var_set) {
@@ -416,16 +369,8 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                         all_pars.push_back(minus);
 
                         if (pars[i].is_int()) {
-                                // fo_pars.push_back(expr_tool::get_plus_exp(m_ctx, pars[i]));
-//                                 fo_pars.push_back(expr_tool::get_minus_exp(m_ctx, pars[i]));
-
-                                // fo_bounds.push_back(pars[i]);
                                 NUM *= 2;
-                                // m_bounds_ctx.push_back(0);
                         } else {
-                                // so_pars.push_back(expr_tool::get_plus_exp(m_ctx, pars[i]));
-                                // so_pars.push_back(expr_tool::get_minus_exp(m_ctx, pars[i]));
-                                //m_so_bounds.push_back(pars[i]);
                                 NUM *= 4;
                         }
                         m_bounds.push_back(pars[i]);
@@ -452,9 +397,6 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                         }
                 }while(i < NUM);
 
-                // std::cout << "end body.....\n";
-
-
 
                 result = z3::mk_and(all_items);
                 result = z3::forall(all_pars, result);
@@ -462,15 +404,6 @@ z3::expr qgdbs_translator::translate_formula(z3::expr formula) {
                 //std::cout << "formula: " << formula << std::endl;
 
                 //std::cout << "result: " << result << std::endl;
-                //exit(-1);
-                /*
-                  if (fo_pars.size() > 0) {
-                  result = z3::forall(fo_pars, result);
-                  }
-                  // make all
-                  if (so_pars.size() > 0)
-                  result = z3::forall(so_pars, result);
-                */
                 // pop
                 for (i=0; i<size; i++) {
                         m_bounds.pop_back();
@@ -685,14 +618,6 @@ z3::expr qgdbs_translator::translate_formula_plus(z3::expr formula) {
                         // return expr_tool::mk_min_max(m_ctx, 0, ts);
                 }
                 if (expr_tool::is_fun(formula, "max")) {
-                        /*
-                          z3::expr ts = translate_formula_plus(formula.arg(0));
-                          if (expr_tool::is_fun(ts, "emptyset")) {
-                          // TODO UNDEF
-                          return min_empty;
-                          }
-                          return expr_tool::mk_min_max(m_ctx, 1, ts);
-                        */
 
                         z3::expr ts = formula.arg(0);
                         z3::expr ts_plus = expr_tool::get_plus_exp(m_ctx, ts);
@@ -919,6 +844,129 @@ z3::expr qgdbs_translator::item_to_qgdbs(z3::expr t_i_1, z3::expr t_i_2, std::st
 }
 
 /**
+ * translate first order item in current ectx
+ * @param var : the var [first order var or min max]
+ * @param result : translte_item
+ * @return : [-1, 0, +1]
+ */
+int qgdbs_translator::translate_fo_item(z3::expr var, z3::expr &result) {
+        int ctx = -1;
+        if (expr_tool::is_int_const(var)) {
+                // fo var
+                ctx = get_ctx(var);
+                z3::expr var_minus = expr_tool::get_minus_exp(m_ctx, var);
+                z3::expr var_plus = expr_tool::get_plus_exp(m_ctx, var);
+                result = var_plus;
+                if (ctx == 1) {
+                        result = var_minus;
+                        return -1;
+                }
+                return 1;
+        } else {
+                // min or max
+                // premise: min or max (Ts) Ts is so var
+                z3::expr so_var = var.arg(0);
+                ctx = get_ctx(so_var);
+                int sign = 1;
+                int mm = 0;
+                if (expr_tool::is_fun(var, "max")) {
+                        mm = 1;
+                }
+                z3::expr exp(m_ctx);
+
+                if (ctx == 3) {
+                        // bottom
+                        return 0;
+                } else if (ctx == 0) {
+                        // +
+                        exp = expr_tool::get_plus_exp(m_ctx, so_var);
+                } else if (ctx == 1) {
+                        // -
+                        sign = -1;
+                        mm = 1 - mm;
+                        exp = expr_tool::get_minus_exp(m_ctx, so_var);
+                } else if (ctx == 2) {
+                        // + -
+                        if (mm == 0) {
+                                sign = -1;
+                                mm = 1 - mm;
+                                exp = expr_tool::get_minus_exp(m_ctx, so_var);
+                        } else {
+                                exp = expr_tool::get_plus_exp(m_ctx, so_var);
+                        }
+                }
+
+
+
+                result = expr_tool::mk_min_max(m_ctx, mm, exp);
+
+                return sign;
+        }
+}
+
+/**
+ * new version of translating into qgdbs_minus
+ * t_i_1 R t_i_2 + c
+ * @param t_i_1
+ * @param R
+ * @param t_i_2
+ * @param c
+ * @return
+ */
+z3::expr qgdbs_translator::translate_qgdbs_minus_new(z3::expr t_i_1, std::string R, z3::expr t_i_2, int c) {
+        // OP is {<=, =, >=}
+        if (R == ">") {
+                R = ">=";
+                c += 1;
+        } else if (R == "<") {
+                c -= 1;
+                R = "<=";
+        }
+
+        z3::expr f_true = m_ctx.bool_val(true);
+        z3::expr f_false = m_ctx.bool_val(false);
+        z3::expr c_exp = m_ctx.int_val(c);
+
+        z3::expr t_i_1_p(m_ctx);
+        int sign1 = 0;
+        z3::expr t_i_2_p(m_ctx);
+        int sign2 = 0;
+
+        // std::cout << "atom: " << t_i_1 << R << t_i_2 << "+" << c << std::endl;
+
+        sign1 = translate_fo_item(t_i_1, t_i_1_p);
+        sign2 = translate_fo_item(t_i_2, t_i_2_p);
+
+        if (sign1 == 0 || sign2 == 0) {
+                return f_false;
+        } else if (sign1 == 1 && sign2 == 1) {
+                // alpha = beta + c
+                return expr_tool::mk_item(t_i_1_p, R, t_i_2_p, c_exp);
+        } else if (sign1 == -1 && sign2 == 1) {
+                // -alpha = beta + c
+                if (c > 0) {
+                        if (R == "<=") return f_true;
+                        else return f_false;
+                } else {
+                        if (R == ">=") R = "<=";
+                        else if (R == "<=") R = ">=";
+                        return item_to_qgdbs(t_i_1_p, t_i_2_p, R, -c);
+                }
+        } else if (sign1 == 1 && sign2 == -1) {
+                // alpha = -beta + c
+                if (c < 0) {
+                        if (R == ">=") return f_true;
+                        else return f_false;
+                } else {
+                        return item_to_qgdbs(t_i_1_p, t_i_2_p, R, c);
+                }
+        } else {
+                // -alpha = -beta + c
+                return expr_tool::mk_item(t_i_2_p, R, t_i_1_p, c_exp);
+        }
+}
+
+/**
  * translate t_i_1 = t_i_2 + c by table 3, 4
  *
  */
@@ -1138,162 +1186,162 @@ z3::expr qgdbs_translator::translate_qgdbs_minus(z3::expr t_i_1, std::string R, 
 
 
                 /*
-                if (case_i < 2) {
-                        int ctx_1 = get_ctx(t_i_1);
-                        z3::expr x1_plus = expr_tool::get_plus_exp(m_ctx, t_i_1);
-                        z3::expr x1_minus = expr_tool::get_minus_exp(m_ctx, t_i_1);
-                        if (case_i == 0) {
-                                // x R min(Ts) + c
-                                z3::expr min_ts2_plus = expr_tool::mk_min_max(m_ctx, 0, ts2_plus);
-                                z3::expr max_ts2_minus = expr_tool::mk_min_max(m_ctx, 1, ts2_minus);
+                  if (case_i < 2) {
+                  int ctx_1 = get_ctx(t_i_1);
+                  z3::expr x1_plus = expr_tool::get_plus_exp(m_ctx, t_i_1);
+                  z3::expr x1_minus = expr_tool::get_minus_exp(m_ctx, t_i_1);
+                  if (case_i == 0) {
+                  // x R min(Ts) + c
+                  z3::expr min_ts2_plus = expr_tool::mk_min_max(m_ctx, 0, ts2_plus);
+                  z3::expr max_ts2_minus = expr_tool::mk_min_max(m_ctx, 1, ts2_minus);
 
-                                if (R == "=" || R == ">=") {
-                                        if (ctx_1 == 0) {
-                                                return (ts2_minus == empty && expr_tool::mk_item(x1_plus, R, min_ts2_plus, c_exp));
-                                        }
+                  if (R == "=" || R == ">=") {
+                  if (ctx_1 == 0) {
+                  return (ts2_minus == empty && expr_tool::mk_item(x1_plus, R, min_ts2_plus, c_exp));
+                  }
 
-                                        z3::expr item1 =  expr_tool::mk_item(max_ts2_minus, R, x1_minus, c_exp);
-                                        if (R == ">=") R="<=";
-                                        // z3::expr item2 = (ts2_minus == empty && expr_tool::mk_item(x1_minus+min_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
-                                        z3::expr item2 = (ts2_minus == empty && item_to_qgdbs(x1_minus, min_ts2_plus, R, -c)); // NON-DB
+                  z3::expr item1 =  expr_tool::mk_item(max_ts2_minus, R, x1_minus, c_exp);
+                  if (R == ">=") R="<=";
+                  // z3::expr item2 = (ts2_minus == empty && expr_tool::mk_item(x1_minus+min_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
+                  z3::expr item2 = (ts2_minus == empty && item_to_qgdbs(x1_minus, min_ts2_plus, R, -c)); // NON-DB
 
-                                        return  item1 || item2;
-                                } else if (R == "<=") {
-                                        if (ctx_1 == 0) {
-                                                return (ts2_minus == empty && expr_tool::mk_item(x1_plus, R, min_ts2_plus, c_exp));
-                                        }
+                  return  item1 || item2;
+                  } else if (R == "<=") {
+                  if (ctx_1 == 0) {
+                  return (ts2_minus == empty && expr_tool::mk_item(x1_plus, R, min_ts2_plus, c_exp));
+                  }
 
-                                        R = ">=";
-                                        z3::expr item1 =  expr_tool::mk_item(x1_minus, R, max_ts2_minus, c_minus_exp);
-                                        // z3::expr item2 = (ts2_minus == empty && expr_tool::mk_item(x1_minus+min_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
-                                        z3::expr item2 = (ts2_minus == empty && item_to_qgdbs(x1_minus, min_ts2_plus, R, -c)); // NON-DB
+                  R = ">=";
+                  z3::expr item1 =  expr_tool::mk_item(x1_minus, R, max_ts2_minus, c_minus_exp);
+                  // z3::expr item2 = (ts2_minus == empty && expr_tool::mk_item(x1_minus+min_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
+                  z3::expr item2 = (ts2_minus == empty && item_to_qgdbs(x1_minus, min_ts2_plus, R, -c)); // NON-DB
 
-                                        return  item1 || item2;
-                                }
-                        } else if(case_i == 1) {
-                                // x R max(Ts) + c
-                                z3::expr max_ts2_plus = expr_tool::mk_min_max(m_ctx, 1, ts2_plus);
-                                z3::expr min_ts2_minus = expr_tool::mk_min_max(m_ctx, 0, ts2_minus);
+                  return  item1 || item2;
+                  }
+                  } else if(case_i == 1) {
+                  // x R max(Ts) + c
+                  z3::expr max_ts2_plus = expr_tool::mk_min_max(m_ctx, 1, ts2_plus);
+                  z3::expr min_ts2_minus = expr_tool::mk_min_max(m_ctx, 0, ts2_minus);
 
-                                if (R == "=" || R == "<=") {
-                                        if (ctx_1 == 0) {
-                                                return expr_tool::mk_item(x1_plus, R, max_ts2_plus, c_exp);
-                                        }
+                  if (R == "=" || R == "<=") {
+                  if (ctx_1 == 0) {
+                  return expr_tool::mk_item(x1_plus, R, max_ts2_plus, c_exp);
+                  }
 
-                                        z3::expr item1 =  ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, x1_minus, c_exp);
-                                        if (R == "<=") R = ">=";
-                                        // z3::expr item2 = (expr_tool::mk_item(x1_minus + max_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
-                                        z3::expr item2 = item_to_qgdbs(x1_minus, max_ts2_plus, R, -c); // NON-DB
+                  z3::expr item1 =  ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, x1_minus, c_exp);
+                  if (R == "<=") R = ">=";
+                  // z3::expr item2 = (expr_tool::mk_item(x1_minus + max_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
+                  z3::expr item2 = item_to_qgdbs(x1_minus, max_ts2_plus, R, -c); // NON-DB
 
-                                        return  item1 || item2;
-                                } else if (R == ">=") {
-                                        if (ctx_1 == 0) {
-                                                return  expr_tool::mk_item(x1_plus, R, max_ts2_plus, c_exp) || ts2_plus == empty;
-                                        }
+                  return  item1 || item2;
+                  } else if (R == ">=") {
+                  if (ctx_1 == 0) {
+                  return  expr_tool::mk_item(x1_plus, R, max_ts2_plus, c_exp) || ts2_plus == empty;
+                  }
 
-                                        if (R == "<=") R = ">=";
-                                        z3::expr item1 =  ts2_plus == empty && expr_tool::mk_item(x1_minus, R, min_ts2_minus, c_minus_exp);
-                                        // z3::expr item2 = (expr_tool::mk_item(x1_minus + max_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
-                                        z3::expr item2 = item_to_qgdbs(x1_minus, max_ts2_plus, R, -c); // NON-DB
+                  if (R == "<=") R = ">=";
+                  z3::expr item1 =  ts2_plus == empty && expr_tool::mk_item(x1_minus, R, min_ts2_minus, c_minus_exp);
+                  // z3::expr item2 = (expr_tool::mk_item(x1_minus + max_ts2_plus, R, zero_exp, c_minus_exp)); // NON-DB
+                  z3::expr item2 = item_to_qgdbs(x1_minus, max_ts2_plus, R, -c); // NON-DB
 
-                                        return  item1 || item2;
-                                }
+                  return  item1 || item2;
+                  }
 
-                        }
-                } else {
-                        // case_i >= 2
-
-
-                        z3::expr ts1_minus = translate_formula_minus(t_i_1.arg(0));
-                        z3::expr ts1_plus = translate_formula_plus(t_i_1.arg(0));
-
-                        z3::expr max_ts2_plus = expr_tool::mk_min_max(m_ctx, 1, ts2_plus);
-                        z3::expr min_ts2_plus = expr_tool::mk_min_max(m_ctx, 0, ts2_plus);
-                        z3::expr max_ts2_minus = expr_tool::mk_min_max(m_ctx, 1, ts2_minus);
-                        z3::expr min_ts2_minus = expr_tool::mk_min_max(m_ctx, 0, ts2_minus);
-
-                        z3::expr max_ts1_plus = expr_tool::mk_min_max(m_ctx, 1, ts1_plus);
-                        z3::expr min_ts1_plus = expr_tool::mk_min_max(m_ctx, 0, ts1_plus);
-                        z3::expr max_ts1_minus = expr_tool::mk_min_max(m_ctx, 1, ts1_minus);
-                        z3::expr min_ts1_minus = expr_tool::mk_min_max(m_ctx, 0, ts1_minus);
-
-                        if (case_i == 2) {
-                                // min(Ts) R min(Ts) + c
-                                z3::expr item1 = ts1_minus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_plus, R, min_ts2_plus, c_exp);
-                                z3::expr item3 = expr_tool::mk_item(max_ts2_minus, R, max_ts1_minus, c_exp);
-                                if ( R == ">=") {
-
-                                        z3::expr item4 = ts1_minus == empty && ts2_minus != empty;
-                                        R = "<=";
-                                        // z3::expr item2 = ts2_minus == empty && expr_tool::mk_item(min_ts2_plus+max_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = ts2_minus == empty && item_to_qgdbs(max_ts1_minus, min_ts2_plus, R, -c);
+                  }
+                  } else {
+                  // case_i >= 2
 
 
-                                        return item1 || item2 || item3 || item4;
-                                } else if (R == "=" || R == "<=") {
-                                        if (R == "<=") R = ">=";
-                                        // z3::expr item2 = ts2_minus == empty && expr_tool::mk_item(min_ts2_plus+max_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = ts2_minus == empty && item_to_qgdbs(max_ts1_minus, min_ts2_plus, R, -c);
+                  z3::expr ts1_minus = translate_formula_minus(t_i_1.arg(0));
+                  z3::expr ts1_plus = translate_formula_plus(t_i_1.arg(0));
 
-                                        return item1 || item2 || item3;
-                                }
-                        } else if (case_i == 3) {
-                                // min(Ts) R max(Ts) + c
-                                z3::expr item1 = ts1_minus == empty && expr_tool::mk_item(min_ts1_plus, R, max_ts2_plus, c_exp);
-                                z3::expr item3 = ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, max_ts1_minus, c_exp);
-                                if ( R == ">=") {
-                                        z3::expr item4 = ts1_minus == empty && ts1_plus != empty && ts2_plus == empty && ts2_minus != empty;
-                                        R = "<=";
-                                        // z3::expr item2 =  expr_tool::mk_item(max_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = item_to_qgdbs(max_ts1_minus, max_ts2_plus, R, -c);
+                  z3::expr max_ts2_plus = expr_tool::mk_min_max(m_ctx, 1, ts2_plus);
+                  z3::expr min_ts2_plus = expr_tool::mk_min_max(m_ctx, 0, ts2_plus);
+                  z3::expr max_ts2_minus = expr_tool::mk_min_max(m_ctx, 1, ts2_minus);
+                  z3::expr min_ts2_minus = expr_tool::mk_min_max(m_ctx, 0, ts2_minus);
 
-                                        return item1 || item2 || item4 || item3;
-                                } else if (R == "=" || R == "<=") {
-                                        if (R == "<=") R = ">=";
-                                        // z3::expr item2 =  expr_tool::mk_item(max_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = item_to_qgdbs(max_ts1_minus, max_ts2_plus, R, -c);
+                  z3::expr max_ts1_plus = expr_tool::mk_min_max(m_ctx, 1, ts1_plus);
+                  z3::expr min_ts1_plus = expr_tool::mk_min_max(m_ctx, 0, ts1_plus);
+                  z3::expr max_ts1_minus = expr_tool::mk_min_max(m_ctx, 1, ts1_minus);
+                  z3::expr min_ts1_minus = expr_tool::mk_min_max(m_ctx, 0, ts1_minus);
 
-                                        return item1 || item2 || item3;
-                                }
-                        } else if (case_i == 4) {
-                                // max(Ts) R min(Ts) + c
-                                z3::expr item1 = ts2_minus == empty && expr_tool::mk_item(max_ts1_plus, R, min_ts2_plus, c_exp);
-                                z3::expr item3 = ts1_plus == empty && expr_tool::mk_item(max_ts2_minus, R, min_ts1_minus, c_exp);
-                                if ( R == ">=") {
-                                        z3::expr item4 = ts1_plus != empty && ts2_minus != empty;
-                                        R = "<=";
-                                        // z3::expr item2 = ts1_plus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = ts1_plus == empty && ts2_minus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+                  if (case_i == 2) {
+                  // min(Ts) R min(Ts) + c
+                  z3::expr item1 = ts1_minus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_plus, R, min_ts2_plus, c_exp);
+                  z3::expr item3 = expr_tool::mk_item(max_ts2_minus, R, max_ts1_minus, c_exp);
+                  if ( R == ">=") {
 
-                                        return item1 || item2 || item4 || item3;
-                                } else if (R == "=" || R == "<=") {
-                                        if (R == "<=") R = ">=";
-                                        // z3::expr item2 = ts1_plus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = ts1_plus == empty && ts2_minus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+                  z3::expr item4 = ts1_minus == empty && ts2_minus != empty;
+                  R = "<=";
+                  // z3::expr item2 = ts2_minus == empty && expr_tool::mk_item(min_ts2_plus+max_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = ts2_minus == empty && item_to_qgdbs(max_ts1_minus, min_ts2_plus, R, -c);
 
-                                        return item1 || item2 || item3;
-                                }
-                        } else if (case_i == 5) {
-                                // max(Ts) R max(Ts) + c
-                                z3::expr item1 =  expr_tool::mk_item(max_ts1_plus, R, max_ts2_plus, c_exp);
-                                z3::expr item3 = ts1_plus == empty && ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, min_ts1_minus, c_exp);
-                                if ( R == ">=") {
-                                        z3::expr item4 = ts1_plus != empty && ts2_minus != empty && ts2_plus == empty;
-                                        R = "<=";
-                                        // z3::expr item2 = ts1_plus == empty && expr_tool::mk_item(max_ts2_plus+min_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
-                                        z3::expr item2 = ts1_plus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
 
-                                        return item1 || item2 || item4 || item3;
-                                } else if (R == "=" || R == "<=") {
-                                        if (R == "<=") R = ">=";
-                                        // z3::expr item2 = ts1_plus == empty && expr_tool::mk_item(max_ts2_plus+min_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
+                  return item1 || item2 || item3 || item4;
+                  } else if (R == "=" || R == "<=") {
+                  if (R == "<=") R = ">=";
+                  // z3::expr item2 = ts2_minus == empty && expr_tool::mk_item(min_ts2_plus+max_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = ts2_minus == empty && item_to_qgdbs(max_ts1_minus, min_ts2_plus, R, -c);
 
-                                        z3::expr item2 = ts1_plus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+                  return item1 || item2 || item3;
+                  }
+                  } else if (case_i == 3) {
+                  // min(Ts) R max(Ts) + c
+                  z3::expr item1 = ts1_minus == empty && expr_tool::mk_item(min_ts1_plus, R, max_ts2_plus, c_exp);
+                  z3::expr item3 = ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, max_ts1_minus, c_exp);
+                  if ( R == ">=") {
+                  z3::expr item4 = ts1_minus == empty && ts1_plus != empty && ts2_plus == empty && ts2_minus != empty;
+                  R = "<=";
+                  // z3::expr item2 =  expr_tool::mk_item(max_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = item_to_qgdbs(max_ts1_minus, max_ts2_plus, R, -c);
 
-                                        return item1 || item2  || item3;
-                                }
-                        }
-                }
+                  return item1 || item2 || item4 || item3;
+                  } else if (R == "=" || R == "<=") {
+                  if (R == "<=") R = ">=";
+                  // z3::expr item2 =  expr_tool::mk_item(max_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = item_to_qgdbs(max_ts1_minus, max_ts2_plus, R, -c);
+
+                  return item1 || item2 || item3;
+                  }
+                  } else if (case_i == 4) {
+                  // max(Ts) R min(Ts) + c
+                  z3::expr item1 = ts2_minus == empty && expr_tool::mk_item(max_ts1_plus, R, min_ts2_plus, c_exp);
+                  z3::expr item3 = ts1_plus == empty && expr_tool::mk_item(max_ts2_minus, R, min_ts1_minus, c_exp);
+                  if ( R == ">=") {
+                  z3::expr item4 = ts1_plus != empty && ts2_minus != empty;
+                  R = "<=";
+                  // z3::expr item2 = ts1_plus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = ts1_plus == empty && ts2_minus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+
+                  return item1 || item2 || item4 || item3;
+                  } else if (R == "=" || R == "<=") {
+                  if (R == "<=") R = ">=";
+                  // z3::expr item2 = ts1_plus == empty && ts2_minus == empty && expr_tool::mk_item(min_ts1_minus+max_ts2_plus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = ts1_plus == empty && ts2_minus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+
+                  return item1 || item2 || item3;
+                  }
+                  } else if (case_i == 5) {
+                  // max(Ts) R max(Ts) + c
+                  z3::expr item1 =  expr_tool::mk_item(max_ts1_plus, R, max_ts2_plus, c_exp);
+                  z3::expr item3 = ts1_plus == empty && ts2_plus == empty && expr_tool::mk_item(min_ts2_minus, R, min_ts1_minus, c_exp);
+                  if ( R == ">=") {
+                  z3::expr item4 = ts1_plus != empty && ts2_minus != empty && ts2_plus == empty;
+                  R = "<=";
+                  // z3::expr item2 = ts1_plus == empty && expr_tool::mk_item(max_ts2_plus+min_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
+                  z3::expr item2 = ts1_plus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+
+                  return item1 || item2 || item4 || item3;
+                  } else if (R == "=" || R == "<=") {
+                  if (R == "<=") R = ">=";
+                  // z3::expr item2 = ts1_plus == empty && expr_tool::mk_item(max_ts2_plus+min_ts1_minus, R, zero_exp, c_minus_exp); // NON-DB
+
+                  z3::expr item2 = ts1_plus == empty && item_to_qgdbs(min_ts1_minus, max_ts2_plus, R, -c);
+
+                  return item1 || item2  || item3;
+                  }
+                  }
+                  }
                 */
 
         }

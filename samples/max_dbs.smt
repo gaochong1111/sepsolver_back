@@ -37,7 +37,7 @@
         ; (distinct E F)
         ; (= (min S2) (+ min(S1) 5))
         (= (max S2) (- (max S1) 5))
-        (< (max S1) 5)
+        ; (< (max S1) 6)
 
         (tobool
             (sls E S1 F S2)

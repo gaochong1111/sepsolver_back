@@ -79,12 +79,6 @@ z3::check_result listsetsolver::check_sat() {
         expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
         expr_tool::get_first_order_vars(f_abs, fo_vars_set1);
 
-
-
-
-
-
-
         // expr_tool::write_file("f_abs.smt", f_abs);
 
         std::set<z3::expr, exprcomp> mm_items;

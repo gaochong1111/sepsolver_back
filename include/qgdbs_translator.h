@@ -36,11 +36,13 @@ private:
 
 
         bool has_quantified_var(z3::expr delta, std::set<z3::expr, exprcomp>& var_set);
+        int translate_fo_item(z3::expr var, z3::expr& result);
         z3::expr translate_formula(z3::expr formula);
         z3::expr translate_formula_plus(z3::expr formula);
         z3::expr translate_formula_minus(z3::expr formula);
         z3::expr translate_qgdbs_minus(z3::expr t_i_1, std::string R, int c);
         z3::expr translate_qgdbs_minus(z3::expr t_i_1, std::string R, z3::expr t_i_2, int c);
+        z3::expr translate_qgdbs_minus_new(z3::expr t_i_1, std::string R, z3::expr t_i_2, int c);
         z3::expr bctx_to_expr(z3::expr_vector& bounds, int start);
         z3::expr item_to_qgdbs(z3::expr t_i_1, z3::expr t_i_2, std::string R, int c);
         z3::expr ectx_to_expr();
