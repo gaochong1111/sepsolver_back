@@ -13,14 +13,9 @@
 
             (exists ((?X Sls_t) (?S2 SetInt))
                     (and
-                        ; (= ?S ?S2)
-                        (= ?S (setunion ?S2 (set (min ?S))))
-                        (= (min ?S2) (+ (min ?S) 1))
-                        ; (<= (max ?S) (+ (min ?S) ))
-                        ; (= ?S (setunion ?S2 (set (min ?S))))
-                        ;(= (max ?S) (+ (max ?S2) 3))
-                        ; (<= (min ?S2) (- (min ?S) 2))
-                        ; (> (min ?S2) (min ?S))
+                        (= ?S (setunion ?S2 (setunion (set (min ?S)) (set (max ?S)))))
+                        (>= (max ?S) (+ (min ?S) 2))
+                        (<= (max ?S) (+ (min ?S) 10))
                         (tobool (ssep
                                  (pto ?E (sref (ref next ?X) (ref data min(?S))))
                                  (sls ?X ?S2 ?F ?S1)
@@ -46,20 +41,10 @@
 
 
 (assert (and
-        ; (> (min S1) 1)
-        ; (not (subset S2 S1) )
-        ; (distinct E F)
-        ; (>= min(S1) )
-        ; (= S2 (setminus S S3))
         (= (min S2)  (+ (min S1) 7))
-        ;(= (min S1) (+ (max S3) 1))
-        (= (min S4)  (+ (min S3) 8))
-
-        ; (= (max S2) 2)
-
         (tobool
-            (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
-            ;(sls E S1 F S2)
+            ; (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
+            (sls E S1 F S2)
         )
 )
 

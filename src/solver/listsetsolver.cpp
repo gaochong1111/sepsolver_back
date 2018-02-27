@@ -79,7 +79,7 @@ z3::check_result listsetsolver::check_sat() {
         expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
         expr_tool::get_first_order_vars(f_abs, fo_vars_set1);
 
-        // expr_tool::write_file("f_abs.smt", f_abs);
+        expr_tool::write_file("f_abs.smt", f_abs);
 
         std::set<z3::expr, exprcomp> mm_items;
         expr_tool::get_min_max_items(f_abs, mm_items);
@@ -108,78 +108,99 @@ z3::check_result listsetsolver::check_sat() {
         }
 
 
-        // translate into N
-        qgdbs_translator translator(z3_ctx(), f_abs);
-        std::set<z3::expr, exprcomp> so_vars_set1;
-        expr_tool::get_second_order_vars(f_abs, so_vars_set1);
 
-        translator.set_first_order_vars(fo_vars_set);
-        translator.set_second_order_vars(so_vars_set1);
-        translator.prepare();
-        z3::expr f_ps_qgdbs_n(z3_ctx());
-        int count = 0;
+        mona_translator mona_tl(z3_ctx(), f_abs);
+
+        mona_tl.write_to_file("test.mona");
         std::map<std::string, std::string> model;
+        mona_executor mona_exe;
+        mona_exe.set_args("-q");
+        mona_exe.set_name("test.mona");
+        std::cout << "execute mona -q test.mona\n";
+        bool is_sat = mona_exe.execute(model);
+        // std::cout << "sat: " << is_sat << std::endl;
 
-        int total_ctx = 0;
-        int valid_ctx = 0;
-
-
-
-        while(translator.get_next()) {
-
-                // std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
-                // expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
-
-                translator.print_ctx();
-                total_ctx++;
-                // f_ps_qgdbs_n = f_abs;
-                int skip_flag = false;
-
-                for (int i=0; i<m_set_pairs.size(); i++) {
-
-                        int ctx_1 = translator.get_ctx(m_set_pairs[i].first);
-                        int ctx_2 = translator.get_ctx(m_set_pairs[i].second);
-                        // std::cout << "ctx_1: " << ctx_1 << ", " << ctx_2 << std::endl;
-                        if (ctx_2 != 2 && ctx_2 != ctx_1) {
-                                skip_flag = true;
-                        }
-                }
-
-                std::cout << "skip: " << skip_flag << std::endl;
-                // continue;
-
-                if (!skip_flag) {
-                        valid_ctx++;
-
-                        translator.translate_formula_ctx(f_ps_qgdbs_n);
-                        // continue;
-                        mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
-
-                        mona_tl.write_to_file("test.mona");
-
-                        mona_executor mona_exe;
-                        mona_exe.set_args("-q");
-                        mona_exe.set_name("test.mona");
-                        std::cout << "execute mona -q test.mona\n";
-                        bool is_sat = mona_exe.execute(model);
-                        // std::cout << "sat: " << is_sat << std::endl;
-
-                        if (is_sat) {
-                                // translator.print_ctx();
-                                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
-                                count ++;
-                                // break;
-                                // return z3::sat;
-                        } else {
-                                translator.print_ctx();
-                        }
-                }
+        if (is_sat)
+                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+        else {
+                return z3::unsat;
         }
 
-        std::cout << "total_ctx: " << total_ctx << std::endl;
-        std::cout << "valid_ctx: " << valid_ctx << std::endl;
-        std::cout << "sat count: " << count << std::endl;
 
+/*
+// translate into N
+qgdbs_translator translator(z3_ctx(), f_abs);
+std::set<z3::expr, exprcomp> so_vars_set1;
+expr_tool::get_second_order_vars(f_abs, so_vars_set1);
+
+translator.set_first_order_vars(fo_vars_set);
+translator.set_second_order_vars(so_vars_set1);
+translator.prepare();
+z3::expr f_ps_qgdbs_n(z3_ctx());
+int count = 0;
+std::map<std::string, std::string> model;
+
+int total_ctx = 0;
+int valid_ctx = 0;
+
+
+
+while(translator.get_next()) {
+
+// std::cout << "f_ps_qgdbs_n: " << f_ps_qgdbs_n << std::endl;
+
+translator.print_ctx();
+total_ctx++;
+// f_ps_qgdbs_n = f_abs;
+int skip_flag = false;
+
+for (int i=0; i<m_set_pairs.size(); i++) {
+
+int ctx_1 = translator.get_ctx(m_set_pairs[i].first);
+int ctx_2 = translator.get_ctx(m_set_pairs[i].second);
+// std::cout << "ctx_1: " << ctx_1 << ", " << ctx_2 << std::endl;
+if (ctx_2 != 2 && ctx_2 != ctx_1) {
+skip_flag = true;
+}
+}
+
+std::cout << "skip: " << skip_flag << std::endl;
+// continue;
+
+if (!skip_flag) {
+valid_ctx++;
+
+translator.translate_formula_ctx(f_ps_qgdbs_n);
+// continue;
+mona_translator mona_tl(z3_ctx(), f_ps_qgdbs_n);
+
+expr_tool::write_file("f_ps_qgdbs_n.smt", f_ps_qgdbs_n);
+mona_tl.write_to_file("test.mona");
+
+mona_executor mona_exe;
+mona_exe.set_args("-q");
+mona_exe.set_name("test.mona");
+std::cout << "execute mona -q test.mona\n";
+bool is_sat = mona_exe.execute(model);
+// std::cout << "sat: " << is_sat << std::endl;
+
+if (is_sat) {
+// translator.print_ctx();
+display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+count ++;
+break;
+// return z3::sat;
+} else {
+translator.print_ctx();
+}
+}
+
+}
+
+std::cout << "total_ctx: " << total_ctx << std::endl;
+std::cout << "valid_ctx: " << valid_ctx << std::endl;
+std::cout << "sat count: " << count << std::endl;
+*/
         return z3::sat;
 }
 
@@ -199,41 +220,55 @@ void listsetsolver::display_model(std::set<z3::expr, exprcomp> &bool_vars, std::
                 std::cout << b_var << " = " << value << std::endl;
         }
 
-        std::string key_minus;
-        std::string key_plus;
-
-        std::string val1;
-        std::string val2;
-        std::string val;
         for (auto fo_var : fo_vars) {
                 key = fo_var.to_string();
-                key_minus = key;
-                key_minus.append("_minus");
-                key_plus = key;
-                key_plus.append("_plus");
 
-                val1 = model[key_minus];
-                val2 = model[key_plus];
-
-                // std::cout << "val1: " << (val1=="") << std::endl;
-
-                val = merge_model_val(val1, val2);
-                std::cout << fo_var << " = " << val << std::endl;
+                std::cout << key << " = " << model[key] << std::endl;
         }
 
         for (auto so_var : so_vars) {
                 key = so_var.to_string();
-                key_minus = key;
-                key_minus.append("_minus");
-                key_plus = key;
-                key_plus.append("_plus");
 
-                val1 = model[key_minus];
-                val2 = model[key_plus];
-                val = merge_model_val(val1, val2);
-                std::cout << so_var << " = " << val << std::endl;
-
+                std::cout << key << " = " << model[key] << std::endl;
         }
+
+        /*
+          std::string key_minus;
+          std::string key_plus;
+
+          std::string val1;
+          std::string val2;
+          std::string val;
+          for (auto fo_var : fo_vars) {
+          key = fo_var.to_string();
+          key_minus = key;
+          key_minus.append("_minus");
+          key_plus = key;
+          key_plus.append("_plus");
+
+          val1 = model[key_minus];
+          val2 = model[key_plus];
+
+          // std::cout << "val1: " << (val1=="") << std::endl;
+
+          val = merge_model_val(val1, val2);
+          std::cout << fo_var << " = " << val << std::endl;
+          }
+
+          for (auto so_var : so_vars) {
+          key = so_var.to_string();
+          key_minus = key;
+          key_minus.append("_minus");
+          key_plus = key;
+          key_plus.append("_plus");
+
+          val1 = model[key_minus];
+          val2 = model[key_plus];
+          val = merge_model_val(val1, val2);
+          std::cout << so_var << " = " << val << std::endl;
+
+          }
+        */
         std::cout << std::endl;
 
 }
@@ -512,6 +547,7 @@ z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
         // std::cout << "strt_phi_r2: " << strt_phi_r2 << std::endl;
         // std::cout << "case_i: " << case_i << std::endl;
         // std::cout << "set_vars: " << set_vars << std::endl;
+        // exit(0);
         // 2. case by case tr
         z3::expr phi_r1 = delta.arg(0);
         // std::cout << "phi_r1: " << phi_r1 << std::endl;
@@ -520,7 +556,10 @@ z3::expr listsetsolver::compute_tr_closure(predicate &pred) {
 
         phi_pd = compute_tr_by_case(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
 
+        expr_tool::write_file("tr.smt", phi_pd);
+
         // std::cout << "TR: " << phi_pd << std::endl;
+        // exit(0);
 
         return phi_pd;
 }
@@ -539,212 +578,413 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
 
         z3::expr emptyset = expr_tool::mk_emptyset(z3_ctx());
 
+        if (case_i > 5){
+                std::cout << "case is not supported!\n";
+                exit(-1);
+        }
+
 
         if (case_i == -1) {
                 // S1 = S2
                 phi_pd = phi_r1;
-        } else if (case_i < 2) {
+        } else if (case_i % 2 == 0) {
                 // S2 is possible empty
-
-                z3::expr E_S = expr_tool::mk_set_var(z3_ctx(), "E_S");
-                z3::expr_vector pars(z3_ctx());
-                pars.push_back(E_S);
-                // substitute
-                z3::expr_vector src(z3_ctx());
-                z3::expr_vector dst(z3_ctx());
-                src.push_back(set_vars[0]);
-                dst.push_back(E_S);
-                z3::expr tr_f = phi_r1.substitute(src, dst); // phi_r1[E_S/S]
-
-                tr_f = tr_f && strt_phi_r2; // phi_r2
-                tr_f = tr_f && strt_phi_r2.substitute(src, dst); // phi_r2[E_S/S]
-                tr_f = tr_f && !(set_vars[0] == emptyset); // S != \empty
-                tr_f = tr_f && expr_tool::mk_binary_bool(z3_ctx(), "subset", E_S, set_vars[0]); // E_S \subset S
-
-                z3::expr minus_set = expr_tool::mk_binary_set(z3_ctx(), "setminus", set_vars[0], E_S);
-                z3::expr pre_f = (!(minus_set == emptyset) && !(E_S == emptyset));
-                z3::expr exp1(z3_ctx());
-                z3::expr pos_f(z3_ctx());
-                z3::expr_vector ex_pars(z3_ctx());
-                z3::expr es_x = expr_tool::mk_set_var(z3_ctx(), "ES_X");
-                ex_pars.push_back(es_x);
-                if (case_i == 0) {
-                        // S1 = S2 union {min(S1)} , S2 possible empty
-                        exp1 = es_x == minus_set;
-                        pos_f = expr_tool::mk_min_max(z3_ctx(), 0, E_S) >= expr_tool::mk_min_max(z3_ctx(), 1, es_x) + 1;
-
-                } else {
-                        // S1 = S2 union {max(S1)}, S2 possible empty
-                        exp1 = es_x == minus_set;
-                        pos_f = expr_tool::mk_min_max(z3_ctx(), 0, es_x) >= expr_tool::mk_min_max(z3_ctx(), 1, E_S) + 1;
+                if (case_i != 4)
+                        return compute_tr_by_case_02(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
+                else{
+                        return compute_tr_by_case4(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 }
-                pos_f = pos_f && exp1;
-                pos_f = !z3::forall(ex_pars, !pos_f);
-
-                // z3::expr imply_f = z3::implies(pre_f, pos_f); // S\E_S != \empty && E_S != \empty -> max(S\E_S)<min(E_S)
-                z3::expr imply_f = !(pre_f && !pos_f);
-                tr_f = tr_f && imply_f;
-                phi_pd = !(!(set_vars[0] == set_vars[1]) &&  z3::forall(pars, !tr_f)); // S1=S2 || exists
-
-        } else if (case_i < 4) {
-                // S1 = S2 union {min(S1)}, S2 surely empty
-                z3::expr E_S1 = expr_tool::mk_set_var(z3_ctx(), "E_S1");
-                z3::expr E_S2 = expr_tool::mk_set_var(z3_ctx(), "E_S2");
-                z3::expr_vector pars(z3_ctx());
-                pars.push_back(E_S1);
-                pars.push_back(E_S2);
-
-                z3::expr or_0 = (set_vars[0] == set_vars[1]); // S1 = S2
-                z3::expr or_1 = (phi_r1 && strt_phi_r2); // phi_r
-
-
-                z3::expr_vector src(z3_ctx());
-                z3::expr_vector dst(z3_ctx());
-                src.push_back(set_vars[1]);
-                dst.push_back(E_S1);
-                z3::expr tr_f = phi_r1.substitute(src, dst); // phi_r1[E_S1/S2]
-
-                z3::expr_vector src1(z3_ctx());
-                z3::expr_vector dst1(z3_ctx());
-                src1.push_back(set_vars[0]);
-                dst1.push_back(E_S2);
-                tr_f = tr_f && phi_r1.substitute(src1, dst1); // phi_r1[E_S2/S1]
-
-                tr_f = tr_f && expr_tool::mk_binary_bool(z3_ctx(), "subset", E_S2, E_S1); // E_S2 \subset E_S1
-                tr_f = tr_f && !(set_vars[1] == emptyset); // S2 != \empty
-
-                z3::expr minus_set = expr_tool::mk_binary_set(z3_ctx(), "setminus", E_S1, E_S2);
-                z3::expr pre_f = !(minus_set == emptyset);
-
-                z3::expr exp1(z3_ctx());
-                z3::expr exp2(z3_ctx());
-
-                z3::expr item(z3_ctx());
-
-                z3::expr item_set(z3_ctx());
-                z3::expr_vector src3(z3_ctx());
-                z3::expr all_body(z3_ctx());
-
-
-
-                z3::expr phi_r2_01 = phi_r2_items[0]; // min(S1) min(S2)
-                z3::expr phi_r2_23 = phi_r2_items[5]; // max(S1) max(S2)
-
-                z3::expr_vector ex_pars(z3_ctx());
-                z3::expr pos_f(z3_ctx());
-                z3::expr es_x = expr_tool::mk_set_var(z3_ctx(), "ES_X");
-                ex_pars.push_back(es_x);
-                if (case_i == 2) {
-                        // S1 = S2 union {min(S1)} , S2 surely nonempty
-                        exp1 = es_x == minus_set;
-                        pos_f = expr_tool::mk_min_max(z3_ctx(), 0, E_S2)  >= expr_tool::mk_min_max(z3_ctx(), 1, es_x) + 1;
-                        // boundary
-                        item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
-
-                        // {min(S2)}
-                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 0, E_S2));
-
-                        // src3(min(S1), min(S2))
-                        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[0]));
-                        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[1]));
-
-                        all_body = phi_r2_01;
-
-
+        } else {
+                if (case_i != 5) {
+                        return compute_tr_by_case_13(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 } else {
-                        // S1 = S2 union {max(S1)}, S2 surely nonempty
-                        exp1 = es_x == minus_set;
-                        pos_f = expr_tool::mk_min_max(z3_ctx(), 0, es_x)  >= expr_tool::mk_min_max(z3_ctx(), 1, E_S2) + 1;
-
-                        // boundary
-                        item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
-
-
-
-                        // {max(S2)}
-                        item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 1, E_S2));
-
-                        // src3(max(S1), max(S2))
-                        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[1]));
-                        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[0]));
-
-                        all_body = phi_r2_23;
-
+                        return compute_tr_by_case5(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 }
-
-                pos_f = pos_f && exp1;
-                pos_f = !z3::forall(ex_pars, !pos_f);
-
-                //std::cout << "pos_f: " << pos_f << std::endl;
-
-
-                // std::cout << "pre_f : " << pre_f << std::endl;
-                // z3::expr imply_f = z3::implies(pre_f, pos_f);
-                z3::expr imply_f = !(pre_f && !pos_f);
-                // std::cout << "imply_f : " << imply_f << std::endl;
-
-                // imply_f []
-                tr_f = tr_f && imply_f; // E_S1\E_S2 != \empty -> max() < min
-
-                /*
-
-                  z3::expr phi_r2_01 = phi_r2_items[0]; // min(S1) min(S2)
-
-                  // tr_f = tr_f && (phi_r2_01.substitute(src, dst));
-                  // tr_f = tr_f && (phi_r2_01.substitute(src1, dst1));
-
-                  z3::expr phi_r2_23 = phi_r2_items[5]; // max(S1) max(S2)
-
-                  if (case_i == 2) {
-                  item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
-                  } else {
-                  item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
-                  }
-                */
-                tr_f = tr_f && item;
-
-                z3::expr phi_r2_02 = phi_r2_items[1]; // min(S1) max(S1)
-                tr_f = tr_f && phi_r2_02; // ?
-                tr_f = tr_f && phi_r2_02.substitute(src1, dst1);
-
-                z3::expr phi_r2_13 = phi_r2_items[4]; // min(S2) max(S2)
-                tr_f = tr_f && phi_r2_13; // ?
-                tr_f = tr_f && phi_r2_13.substitute(src, dst);
-
-
-                z3::expr_vector pars1(z3_ctx());
-                z3::expr_vector pars2(z3_ctx());
-                z3::expr x = z3_ctx().int_const("x");
-                z3::expr y = z3_ctx().int_const("y");
-                z3::expr z = z3_ctx().int_const("z");
-                pars1.push_back(x);
-                pars1.push_back(y);
-                pars2.push_back(z);
-
-                z3::expr set_u = expr_tool::mk_binary_set(z3_ctx(), "setunion", minus_set, item_set);// E_S1\E_S2 \union {min(E_S2)}
-                z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
-                succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && y>=x+1;
-                // z3::expr all2_f = z3::implies(expr_tool::mk_belongsto(z3_ctx(), z, set_u), !((z > x) && (y > z)) );
-                z3::expr all2_f = !(expr_tool::mk_belongsto(z3_ctx(), z, set_u) && ((z >= x+1) && (y >= z+1)));
-                // x \in set_u && y \in set_u && forall(z). (z \in set_u -> z<=x && y<=z)
-                succ_f = succ_f && z3::forall(pars2, all2_f);
-
-                // z3::expr all1_f = z3::implies(succ_f, all_body.substitute(src3, pars1));
-                z3::expr all1_f = !(succ_f && !all_body.substitute(src3, pars1));
-
-                //std::cout << "forall: " << all1_f << std::endl;
-                //exit(-1);
-
-                // forall []
-                tr_f = tr_f && z3::forall(pars1, all1_f);
-
-                tr_f = !z3::forall(pars, !tr_f);
-
-                phi_pd = !(!or_0 && !or_1 && !tr_f);
         }
+        return phi_pd;
+}
+
+/**
+ * compute tr closure case by case 0 or 2, S2 is possible empty
+ * @param case_i : [0, 2]
+ * @param phi_r1 : S1 = S2 union {min(S1)} or  S1 = S2 union {max(S1)}
+ * @param strt_phi_r2 : phi_r2
+ * @param setvars : S1, S2
+ */
+z3::expr listsetsolver::compute_tr_by_case_02(int case_i, z3::expr &phi_r1, z3::expr &strt_phi_r2, z3::expr_vector &phi_r2_items, z3::expr_vector &set_vars) {
+        assert(case_i == 0 || case_i == 2);
+        z3::expr phi_pd = z3_ctx().bool_val(true);
+
+        z3::expr emptyset = expr_tool::mk_emptyset(z3_ctx());
+
+        z3::expr E_S = expr_tool::mk_set_var(z3_ctx(), "E_S");
+        z3::expr_vector pars(z3_ctx());
+        pars.push_back(E_S);
+        // substitute
+        z3::expr_vector src(z3_ctx());
+        z3::expr_vector dst(z3_ctx());
+        src.push_back(set_vars[0]);
+        dst.push_back(E_S);
+        z3::expr tr_f = phi_r1.substitute(src, dst); // phi_r1[E_S/S]
+
+        tr_f = tr_f && strt_phi_r2; // phi_r2
+        tr_f = tr_f && strt_phi_r2.substitute(src, dst); // phi_r2[E_S/S]
+        tr_f = tr_f && !(set_vars[0] == emptyset); // S != \empty
+        tr_f = tr_f && expr_tool::mk_binary_bool(z3_ctx(), "subset", E_S, set_vars[0]); // E_S \subset S
+
+        z3::expr minus_set = expr_tool::mk_binary_set(z3_ctx(), "setminus", set_vars[0], E_S);
+        z3::expr pre_f = (!(minus_set == emptyset) && !(E_S == emptyset));
+        z3::expr exp1(z3_ctx());
+        z3::expr pos_f(z3_ctx());
+        z3::expr_vector ex_pars(z3_ctx());
+        z3::expr es_x = expr_tool::mk_set_var(z3_ctx(), "ES_X");
+        ex_pars.push_back(es_x);
+        if (case_i == 0) {
+                // S1 = S2 union {min(S1)} , S2 possible empty
+                exp1 = es_x == minus_set;
+                pos_f = expr_tool::mk_min_max(z3_ctx(), 0, E_S) >= expr_tool::mk_min_max(z3_ctx(), 1, es_x) + 1;
+
+        } else if(case_i == 2){
+                // S1 = S2 union {max(S1)}, S2 possible empty
+                exp1 = es_x == minus_set;
+                pos_f = expr_tool::mk_min_max(z3_ctx(), 0, es_x) >= expr_tool::mk_min_max(z3_ctx(), 1, E_S) + 1;
+        } else if (case_i == 4) {
+        }
+        pos_f = pos_f && exp1;
+        pos_f = !z3::forall(ex_pars, !pos_f);
+
+        // z3::expr imply_f = z3::implies(pre_f, pos_f); // S\E_S != \empty && E_S != \empty -> max(S\E_S)<min(E_S)
+        z3::expr imply_f = !(pre_f && !pos_f);
+        tr_f = tr_f && imply_f;
+        phi_pd = !(!(set_vars[0] == set_vars[1]) &&  z3::forall(pars, !tr_f)); // S1=S2 || exists
+        return phi_pd;
+}
+
+
+/**
+ * compute tr closure case by case 1 or 3, S2 is surely  nonempty
+ * @param case_i : [1, 3]
+ * @param phi_r1 : S1 = S2 union {min(S1)} or  S1 = S2 union {max(S1)}
+ * @param strt_phi_r2 : phi_r2
+ * @param setvars : S1, S2
+ */
+z3::expr listsetsolver::compute_tr_by_case_13(int case_i, z3::expr &phi_r1, z3::expr &strt_phi_r2, z3::expr_vector &phi_r2_items, z3::expr_vector &set_vars) {
+
+        assert(case_i == 1 || case_i == 3);
+
+        z3::expr phi_pd = z3_ctx().bool_val(true);
+        z3::expr emptyset = expr_tool::mk_emptyset(z3_ctx());
+
+        // S1 = S2 union {min(S1)}, S2 surely empty
+        z3::expr E_S1 = expr_tool::mk_set_var(z3_ctx(), "E_S1");
+        z3::expr E_S2 = expr_tool::mk_set_var(z3_ctx(), "E_S2");
+        z3::expr_vector pars(z3_ctx());
+        pars.push_back(E_S1);
+        pars.push_back(E_S2);
+
+        z3::expr or_0 = (set_vars[0] == set_vars[1]); // S1 = S2
+        z3::expr or_1 = (phi_r1 && strt_phi_r2); // phi_r
+
+
+        z3::expr_vector src(z3_ctx());
+        z3::expr_vector dst(z3_ctx());
+        src.push_back(set_vars[1]);
+        dst.push_back(E_S1);
+        z3::expr tr_f = phi_r1.substitute(src, dst); // phi_r1[E_S1/S2]
+
+        z3::expr_vector src1(z3_ctx());
+        z3::expr_vector dst1(z3_ctx());
+        src1.push_back(set_vars[0]);
+        dst1.push_back(E_S2);
+        tr_f = tr_f && phi_r1.substitute(src1, dst1); // phi_r1[E_S2/S1]
+
+        tr_f = tr_f && expr_tool::mk_binary_bool(z3_ctx(), "subset", E_S2, E_S1); // E_S2 \subset E_S1
+        tr_f = tr_f && !(set_vars[1] == emptyset); // S2 != \empty
+
+        z3::expr minus_set = expr_tool::mk_binary_set(z3_ctx(), "setminus", E_S1, E_S2);
+        z3::expr pre_f = !(minus_set == emptyset);
+
+        z3::expr exp1(z3_ctx());
+        z3::expr exp2(z3_ctx());
+
+        z3::expr item(z3_ctx());
+
+        z3::expr item_set(z3_ctx());
+        z3::expr_vector src3(z3_ctx());
+        z3::expr all_body(z3_ctx());
+
+
+
+        z3::expr phi_r2_01 = phi_r2_items[0]; // min(S1) min(S2)
+        z3::expr phi_r2_23 = phi_r2_items[5]; // max(S1) max(S2)
+
+        z3::expr_vector ex_pars(z3_ctx());
+        z3::expr pos_f(z3_ctx());
+        z3::expr es_x = expr_tool::mk_set_var(z3_ctx(), "ES_X");
+        ex_pars.push_back(es_x);
+        if (case_i == 1) {
+                // S1 = S2 union {min(S1)} , S2 surely nonempty
+                exp1 = es_x == minus_set;
+                pos_f = expr_tool::mk_min_max(z3_ctx(), 0, E_S2)  >= expr_tool::mk_min_max(z3_ctx(), 1, es_x) + 1;
+                // boundary
+                item = (phi_r2_01.substitute(src, dst)) &&  (phi_r2_01.substitute(src1, dst1));
+
+                // {min(S2)}
+                item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 0, E_S2));
+
+                // src3(min(S1), min(S2))
+                src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[0]));
+                src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[1]));
+
+                all_body = phi_r2_01;
+
+
+        } else if(case_i == 3){
+                // S1 = S2 union {max(S1)}, S2 surely nonempty
+                exp1 = es_x == minus_set;
+                pos_f = expr_tool::mk_min_max(z3_ctx(), 0, es_x)  >= expr_tool::mk_min_max(z3_ctx(), 1, E_S2) + 1;
+
+                // boundary
+                item = (phi_r2_23.substitute(src, dst)) &&  (phi_r2_23.substitute(src1, dst1));
+
+
+
+                // {max(S2)}
+                item_set = expr_tool::mk_single_set(z3_ctx(), expr_tool::mk_min_max(z3_ctx(), 1, E_S2));
+
+                // src3(max(S1), max(S2))
+                src3.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[1]));
+                src3.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[0]));
+
+                all_body = phi_r2_23;
+
+        }
+
+        pos_f = pos_f && exp1;
+        pos_f = !z3::forall(ex_pars, !pos_f);
+
+        //std::cout << "pos_f: " << pos_f << std::endl;
+
+
+        // std::cout << "pre_f : " << pre_f << std::endl;
+        // z3::expr imply_f = z3::implies(pre_f, pos_f);
+        z3::expr imply_f = !(pre_f && !pos_f);
+        // std::cout << "imply_f : " << imply_f << std::endl;
+
+        // imply_f []
+        tr_f = tr_f && imply_f; // E_S1\E_S2 != \empty -> max() < min
+
+        tr_f = tr_f && item;
+
+        z3::expr phi_r2_02 = phi_r2_items[1]; // min(S1) max(S1)
+        tr_f = tr_f && phi_r2_02; // ?
+        tr_f = tr_f && phi_r2_02.substitute(src1, dst1);
+
+        z3::expr phi_r2_13 = phi_r2_items[4]; // min(S2) max(S2)
+        tr_f = tr_f && phi_r2_13; // ?
+        tr_f = tr_f && phi_r2_13.substitute(src, dst);
+
+
+        z3::expr_vector pars1(z3_ctx());
+        z3::expr_vector pars2(z3_ctx());
+        z3::expr x = z3_ctx().int_const("x");
+        z3::expr y = z3_ctx().int_const("y");
+        z3::expr z = z3_ctx().int_const("z");
+        pars1.push_back(x);
+        pars1.push_back(y);
+        pars2.push_back(z);
+
+        z3::expr set_u = expr_tool::mk_binary_set(z3_ctx(), "setunion", minus_set, item_set);// E_S1\E_S2 \union {min(E_S2)}
+        z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
+        succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && y>=x+1;
+        // z3::expr all2_f = z3::implies(expr_tool::mk_belongsto(z3_ctx(), z, set_u), !((z > x) && (y > z)) );
+        z3::expr all2_f = !(expr_tool::mk_belongsto(z3_ctx(), z, set_u) && ((z >= x+1) && (y >= z+1)));
+        // x \in set_u && y \in set_u && forall(z). (z \in set_u -> z<=x && y<=z)
+        succ_f = succ_f && z3::forall(pars2, all2_f);
+
+        // z3::expr all1_f = z3::implies(succ_f, all_body.substitute(src3, pars1));
+        z3::expr all1_f = !(succ_f && !all_body.substitute(src3, pars1));
+
+        //std::cout << "forall: " << all1_f << std::endl;
+
+        // forall []
+        tr_f = tr_f && z3::forall(pars1, all1_f);
+
+        tr_f = !z3::forall(pars, !tr_f);
+
+        phi_pd = !(!or_0 && !or_1 && !tr_f);
+        return phi_pd;
+
+}
+
+
+/**
+ * compute tr closure case by case 4, S2 is possible empty
+ * @param phi_r1 : S1 = S2 union {min(S1), max(S1)}
+ * @param strt_phi_r2 : phi_r2
+ * @param setvars : S1, S2
+ */
+z3::expr listsetsolver::compute_tr_by_case4(z3::expr &phi_r1, z3::expr &strt_phi_r2, z3::expr_vector &phi_r2_items, z3::expr_vector &set_vars) {
+        z3::expr phi_pd = z3_ctx().bool_val(true);
+        z3::expr emptyset = expr_tool::mk_emptyset(z3_ctx());
+
+        // S1 = S2 union {min(S1), max(S1)}, S2 possible empty
+        z3::expr E_S1 = expr_tool::mk_set_var(z3_ctx(), "E_S1");
+        z3::expr E_S2 = expr_tool::mk_set_var(z3_ctx(), "E_S2");
+        z3::expr E_S3 = expr_tool::mk_set_var(z3_ctx(), "E_S3");
+        z3::expr_vector pars(z3_ctx());
+        pars.push_back(E_S1);
+        pars.push_back(E_S2);
+        pars.push_back(E_S3);
+
+        //substitute
+        z3::expr_vector src(z3_ctx());
+        z3::expr_vector dst(z3_ctx());
+        src.push_back(set_vars[0]);
+        dst.push_back(E_S2);
+        z3::expr tr_f = phi_r1.substitute(src, dst); // phi_r1[E_S/S]
+
+        z3::expr E_S1_S2 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S1, E_S2);
+        z3::expr E_S1_S2_S3 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S1_S2, E_S3);
+        z3::expr item1 = (set_vars[0] == E_S1_S2_S3);
+        tr_f = tr_f && item1;
+
+        tr_f = tr_f && strt_phi_r2;
+        tr_f = tr_f && strt_phi_r2.substitute(src, dst);
+
+        z3::expr pre1 = !(E_S1 == emptyset);
+        z3::expr n_pos1 = expr_tool::mk_min_max(z3_ctx(), 1, E_S1) >= expr_tool::mk_min_max(z3_ctx(), 0, E_S2);
+        z3::expr imp1 = !(pre1 && n_pos1);
+
+        z3::expr pre2 = !(E_S3 == emptyset);
+        z3::expr n_pos2 = expr_tool::mk_min_max(z3_ctx(), 1, E_S2) >= expr_tool::mk_min_max(z3_ctx(), 0, E_S3);
+        z3::expr imp2 = !(pre2 && n_pos2);
+
+        tr_f = tr_f && imp1 && imp2;
+
+        phi_pd = !(!(set_vars[0] == set_vars[1]) &&  z3::forall(pars, !tr_f)); // S1=S2 || exists
 
         return phi_pd;
 }
+
+/**
+ * compute tr closure case by case 5, S2 is surely  nonempty
+ * @param phi_r1 : S1 = S2 union {min(S1), max(S1)}
+ * @param strt_phi_r2 : phi_r2
+ * @param setvars : S1, S2
+ */
+z3::expr listsetsolver::compute_tr_by_case5(z3::expr &phi_r1, z3::expr &strt_phi_r2, z3::expr_vector &phi_r2_items, z3::expr_vector &set_vars) {
+        z3::expr phi_pd = z3_ctx().bool_val(true);
+        z3::expr emptyset = expr_tool::mk_emptyset(z3_ctx());
+
+
+        z3::expr or_0 = (set_vars[0] == set_vars[1]); // S1 = S2
+        z3::expr or_1 = (phi_r1 && strt_phi_r2); // phi_r
+
+
+        // S1 = S2 union {min(S1), max(S1)}, S2 possible empty
+        z3::expr E_S1 = expr_tool::mk_set_var(z3_ctx(), "E_S1");
+        z3::expr E_S2 = expr_tool::mk_set_var(z3_ctx(), "E_S2");
+        z3::expr E_S3 = expr_tool::mk_set_var(z3_ctx(), "E_S3");
+        z3::expr E_S4 = expr_tool::mk_set_var(z3_ctx(), "E_S4");
+        z3::expr_vector pars(z3_ctx());
+        pars.push_back(E_S1);
+        pars.push_back(E_S2);
+        pars.push_back(E_S3);
+        pars.push_back(E_S4);
+
+        //substitute
+        z3::expr_vector src(z3_ctx());
+        z3::expr_vector dst(z3_ctx());
+        src.push_back(set_vars[0]);
+        dst.push_back(E_S2);
+
+        z3::expr_vector src1(z3_ctx());
+        z3::expr_vector dst1(z3_ctx());
+        src1.push_back(set_vars[1]);
+        dst1.push_back(E_S1);
+
+        z3::expr item1 = phi_r1.substitute(src1, dst1); // phi_r1[E_S1/S']
+
+        z3::expr E_S2_S3 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S2, E_S3);
+        z3::expr E_S2_S3_S4 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S2_S3, E_S4);
+        z3::expr item2 = (E_S1 == E_S2_S3_S4);
+
+        z3::expr item3 = phi_r1.substitute(src, dst); // phi_r1[E_S2/S]
+
+        z3::expr pre1 = !(E_S3 == emptyset);
+        z3::expr n_pos1 = expr_tool::mk_min_max(z3_ctx(), 1, E_S3) >= expr_tool::mk_min_max(z3_ctx(), 0, E_S2);
+        z3::expr item4 = !(pre1 && n_pos1);
+
+        z3::expr pre2 = !(E_S4 == emptyset);
+        z3::expr n_pos2 = expr_tool::mk_min_max(z3_ctx(), 1, E_S2) >= expr_tool::mk_min_max(z3_ctx(), 0, E_S4);
+        z3::expr item5 = !(pre2 && n_pos2);
+
+        z3::expr phi_r2_01 = phi_r2_items[0];
+        z3::expr phi_r2_02 = phi_r2_items[1];
+
+        z3::expr item6 = phi_r2_items[0].substitute(src, dst) && phi_r2_items[0].substitute(src1, dst1) &&
+                phi_r2_items[1] && phi_r2_items[1].substitute(src, dst) &&
+                phi_r2_items[2].substitute(src, dst) && phi_r2_items[2].substitute(src1, dst1) &&
+                phi_r2_items[3].substitute(src, dst) && phi_r2_items[3].substitute(src1, dst1) &&
+                phi_r2_items[4] && phi_r2_items[4].substitute(src1, dst1) &&
+                phi_r2_items[5].substitute(src, dst) && phi_r2_items[5].substitute(src1, dst1);
+
+        z3::expr_vector pars1(z3_ctx());
+        z3::expr_vector pars2(z3_ctx());
+        z3::expr x = z3_ctx().int_const("x");
+        z3::expr y = z3_ctx().int_const("y");
+        z3::expr z = z3_ctx().int_const("z");
+        pars1.push_back(x);
+        pars1.push_back(y);
+        pars2.push_back(z);
+
+        z3::expr_vector src3(z3_ctx());
+        // src3(min(S1), min(S2))
+        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[0]));
+        src3.push_back(expr_tool::mk_min_max(z3_ctx(), 0, set_vars[1]));
+        z3::expr_vector src4(z3_ctx());
+        // src4(max(S2), max(S1))
+        src4.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[1]));
+        src4.push_back(expr_tool::mk_min_max(z3_ctx(), 1, set_vars[0]));
+
+
+        z3::expr set_u = expr_tool::mk_set_var(z3_ctx(), "SS");
+        z3::expr_vector src5(z3_ctx());
+        src5.push_back(set_u);
+                //expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S3, set_min_e_s2);// E_S3 \union {min(E_S2)}
+        z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
+        succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && y>=x+1;
+        z3::expr all2_f = !(expr_tool::mk_belongsto(z3_ctx(), z, set_u) && ((z >= x+1) && (y >= z+1)));
+        // x \in set_u && y \in set_u && forall(z). (z \in set_u -> z<=x && y<=z)
+        succ_f = succ_f && z3::forall(pars2, all2_f);
+        z3::expr min_e_s2 = expr_tool::mk_min_max(z3_ctx(), 0, E_S2);
+        z3::expr set_min_e_s2 = expr_tool::mk_single_set(z3_ctx(), min_e_s2);
+        z3::expr set_u1 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S3, set_min_e_s2);// E_S3 \union {min(E_S2)}
+        // z3::expr all1_f = z3::implies(succ_f, all_body.substitute(src3, pars1));
+        z3::expr_vector dst5_1(z3_ctx());
+        dst5_1.push_back(set_u1);
+        z3::expr all_f1 = !(succ_f.substitute(src5, dst5_1) && !phi_r2_items[0].substitute(src3, pars1));
+
+        z3::expr max_e_s2 = expr_tool::mk_min_max(z3_ctx(), 1, E_S2);
+        z3::expr set_max_e_s2 = expr_tool::mk_single_set(z3_ctx(), max_e_s2);
+        z3::expr set_u2 = expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S4, set_max_e_s2);
+        z3::expr_vector dst5_2(z3_ctx());
+        dst5_2.push_back(set_u2);
+        z3::expr all_f2 = !(succ_f.substitute(src5, dst5_2) && !phi_r2_items[5].substitute(src4, pars1));
+
+        z3::expr item7 = z3::forall(pars1, all_f1) && z3::forall(pars1, all_f2);
+
+        z3::expr item8 = z3_ctx().bool_val(true); // quantElmt
+
+
+        z3::expr tr_f = item1 && item2 && item3 && item4 && item5 && item6 && item7 && item8;
+
+        phi_pd = !(!or_0 && !or_1 && z3::forall(pars, !tr_f));
+
+        return phi_pd;
+}
+
 
 /**
  * saturated of phi_r
@@ -755,8 +995,7 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
  */
 int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vector& set_vars,  z3::expr_vector& phi_r2_items) {
         std::cout << "get strt \n";
-        z3::expr phi_r1 = phi_r.arg(0);
-        // z3::expr_vector set_vars(z3_ctx()); // S1, S2
+        z3::expr phi_r1 = phi_r.arg(0); // S = S2 union {min(S)} or S = S2 union {max(S)} or S = S2 union {min(S), max(S)}
         set_vars.push_back(phi_r1.arg(0));
 
 
@@ -783,9 +1022,11 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
 
         } else {
                 set_vars.push_back(phi_r1.arg(1).arg(0));
-                term_s = phi_r1.arg(1).arg(1).arg(0);
-                if (expr_tool::is_fun(term_s, "max")) {
-                        case_i = 1;
+                term_s = phi_r1.arg(1).arg(1);
+                if (expr_tool::is_fun(term_s, "setunion")) {
+                        case_i = 4;
+                } else if (expr_tool::is_fun(term_s.arg(0), "max")) {
+                        case_i = 2;
                 }
         }
 
@@ -838,7 +1079,7 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
 
 
         if (has_s1)
-                // add min(S1) <= max(S2)
+                // min(S1) <= max(S1)
                 set_matrix(matrix, 0, 2, 0);
         // add if has_s2
         if (has_s2) {
@@ -846,19 +1087,19 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
                 set_matrix(matrix, 1, 3, 0);
 
                 if (case_i != -1)
-                        case_i += 2;
+                        case_i += 1;
                 // add by term_s
                 if (Z3_ast(term_s) != 0) {
-                        set_matrix(matrix, 0, 1, 0);
-                        set_matrix(matrix, 3, 2, 0);
-                        if (expr_tool::is_fun(term_s, "min")) {
+                        set_matrix(matrix, 0, 1, 0); // min(S1) <= min(S2)
+                        set_matrix(matrix, 3, 2, 0); // max(S2) <= max(S1)
+                        if ((case_i & 6) == 0) {
                                 // add max(S1) == max(S2)
-                                set_matrix(matrix, 2, 3, 0);
+                                set_matrix(matrix, 2, 3, 0); // max(S1) <= max(S2)
                                 // set_matrix(matrix, 3, 2, 0);
-                        } else {
+                        } else if ((case_i & 6) == 2){
                                 // add min(S1) == min(S2)
                                 // set_matrix(matrix, 0, 1, 0);
-                                set_matrix(matrix, 1, 0, 0);
+                                set_matrix(matrix, 1, 0, 0); // min(S2) <= min(S1)
                         }
                 }
         }
@@ -919,18 +1160,26 @@ int listsetsolver::get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vect
 z3::expr listsetsolver::get_ij_expr(int (*matrix)[4], int i, int j, z3::expr_vector &set_vars) {
         z3::expr phi_ij = z3_ctx().bool_val(true);
         if (i!=j) {
-                if (matrix[i][j] != INT_MAX) {
+                if (matrix[i][j] != INT_MAX && -matrix[i][j] == matrix[j][i]) {
                         if (matrix[i][j] < 0) {
-                                phi_ij = phi_ij && (get_card(j, set_vars) >= get_card(i, set_vars) + z3_ctx().int_val(-matrix[i][j]));
+                                phi_ij = phi_ij && (get_card(j, set_vars) == get_card(i, set_vars) + z3_ctx().int_val(-matrix[i][j]));
                         } else {
-                                phi_ij = phi_ij && (get_card(i, set_vars) <= get_card(j, set_vars) + z3_ctx().int_val(matrix[i][j]));
+                                phi_ij = phi_ij && (get_card(i, set_vars) == get_card(j, set_vars) + z3_ctx().int_val(matrix[i][j]));
                         }
-                }
-                if (matrix[j][i] != INT_MAX) {
-                        if (matrix[j][i] < 0) {
-                                phi_ij = phi_ij && (get_card(i, set_vars) >= get_card(j, set_vars) + z3_ctx().int_val(-matrix[j][i]));
-                        } else {
-                                phi_ij = phi_ij && (get_card(j, set_vars) <= get_card(i, set_vars) + z3_ctx().int_val(matrix[j][i]));
+                } else {
+                        if (matrix[i][j] != INT_MAX) {
+                                if (matrix[i][j] < 0) {
+                                        phi_ij = phi_ij && (get_card(j, set_vars) >= get_card(i, set_vars) + z3_ctx().int_val(-matrix[i][j]));
+                                } else {
+                                        phi_ij = phi_ij && (get_card(i, set_vars) <= get_card(j, set_vars) + z3_ctx().int_val(matrix[i][j]));
+                                }
+                        }
+                        if (matrix[j][i] != INT_MAX) {
+                                if (matrix[j][i] < 0) {
+                                        phi_ij = phi_ij && (get_card(i, set_vars) >= get_card(j, set_vars) + z3_ctx().int_val(-matrix[j][i]));
+                                } else {
+                                        phi_ij = phi_ij && (get_card(j, set_vars) <= get_card(i, set_vars) + z3_ctx().int_val(matrix[j][i]));
+                                }
                         }
                 }
         }
