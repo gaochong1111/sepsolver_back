@@ -6,14 +6,18 @@
 class listsetsolver :public solver {
 private:
         std::vector<std::pair<z3::expr, z3::expr> > m_set_pairs;
+        std::vector<z3::expr> m_free_items;
+        std::vector<z3::expr> m_pred_tms;
 private:
         void compute_all_tr_closure();
+        bool check_data(z3::expr& data);
         z3::expr compute_tr_closure(predicate& pred);
         z3::expr compute_tr_by_case(int case_i, z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
         z3::expr compute_tr_by_case_02(int case_i, z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
         z3::expr compute_tr_by_case_13(int case_i, z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
         z3::expr compute_tr_by_case4(z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
         z3::expr compute_tr_by_case5(z3::expr& phi_r1, z3::expr& strt_phi_r2, z3::expr_vector& phi_r2_items, z3::expr_vector& set_vars);
+        void quant_elmt(z3::expr_vector& tms, z3::expr_vector& quant_elmts);
 
         int get_strt(z3::expr phi_r, z3::expr& strt_phi_r2, z3::expr_vector& set_vars, z3::expr_vector& phi_r2_items);
 

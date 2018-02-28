@@ -18,6 +18,56 @@ void listsetsolver::check_preds() {
 }
 
 /**
+ * check data whether contains Tm op 0 and min(S) op c
+ * @param data
+ * @return true, if no min(S) op c
+ */
+bool listsetsolver::check_data(z3::expr& data) {
+        // 1. check min(S) op c
+        // 2. check Tm op 0
+        // std::cout << "check data: " << data << std::endl;
+        z3::expr_vector items(z3_ctx());
+        for (int i=0; i<data.num_args(); i++) {
+                z3::expr item = data.arg(i);
+                if (item.num_args() == 2) {
+                        // Ti op Ti + c
+                        if (item.arg(0).num_args() == 2) {
+                                // Tm op c
+                                m_free_items.push_back(item);
+                        } else {
+                                // Ti op Ti + c
+                                std::string op = item.decl().name().str();
+                                z3::expr item1 = item.arg(1);
+                                if (item1.num_args() == 2) {
+                                        if (!expr_tool::is_constant(item1.arg(1))) {
+                                                return false;
+                                        }
+                                        if (expr_tool::is_fun(item1, "-")) {
+                                                if (op == "=") {
+                                                        item = item1.arg(0) == item.arg(0) + item1.arg(1);
+                                                } else if (op == ">=") {
+                                                        item = item1.arg(0) <= item.arg(0) + item1.arg(1);
+
+                                                } else if (op == "<=") {
+                                                        item = item1.arg(0) >= item.arg(0) + item1.arg(1);
+                                                }
+                                        }
+                                } else {
+                                        if (expr_tool::is_constant(item1)) {
+                                                std::string name = item.arg(0).decl().name().str();
+                                                if (name == "min" || name == "max") {
+                                                        return false;
+                                                }
+                                        }
+                                }
+                        }
+                }
+                items.push_back(item);
+        }
+        return true;
+}
+
+/**
  * check sat, negf in m_ctx
  * or check entl, negf |= posf
  * @return z3::check_result
@@ -54,6 +104,16 @@ z3::check_result listsetsolver::check_sat() {
 
         // get abstraction
         z3::expr f_abs = data;
+
+        // check data
+
+        bool is_data = check_data(f_abs);
+        if (!is_data) {
+                std::cout << "THE DATA FORMULA IS NOT SUPPORTED!\n";
+                exit(-1);
+        }
+
+
         z3::expr space_abs = z3_ctx().bool_val(true);
         z3::expr star_abs = z3_ctx().bool_val(true);
         if (Z3_ast(space) != 0) {
@@ -107,24 +167,93 @@ z3::check_result listsetsolver::check_sat() {
 
         }
 
+        if (m_free_items.size() == 0) {
+                // simple case
+
+                mona_translator mona_tl(z3_ctx(), f_abs);
+
+                mona_tl.write_to_file("test.mona");
+                std::map<std::string, std::string> model;
+                mona_executor mona_exe;
+                mona_exe.set_args("-q");
+                mona_exe.set_name("test.mona");
+                std::cout << "execute mona -q test.mona\n";
+                bool is_sat = mona_exe.execute(model);
+                // std::cout << "sat: " << is_sat << std::endl;
+
+                if (is_sat)
+                        display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+                else {
+                        return z3::unsat;
+                }
+        } else {
+                // complex case
+                std::cout << "free_items size: "  << m_free_items.size() << std::endl;
+                for (int i=0; i<m_free_items.size(); i++) {
+                        std::cout << m_free_items[i] << std::endl;
+                }
+                int MAX_CTX = 1 << m_free_items.size();
+                int ctx = 0;
+                z3::expr_vector src(z3_ctx());
+
+                for (int i=0; i<m_free_items.size(); i++) {
+                        src.push_back(m_free_items[i]);
+                }
+
+                while(ctx < MAX_CTX) {
+                        z3::expr_vector dst(z3_ctx());
+                        z3::expr_vector phi_count_items(z3_ctx());
+
+                        for (int i=0; i<m_free_items.size(); i++) {
+                                if((ctx & (1<<i))) {
+                                        // true
+                                        dst.push_back(z3_ctx().bool_val(true));
+                                        phi_count_items.push_back(m_free_items[i]);
+                                } else {
+                                        dst.push_back(z3_ctx().bool_val(false));
+                                        phi_count_items.push_back(!m_free_items[i]);
+                                }
+                        }
+                        ctx++;
+
+                        z3::expr phi_core = f_abs.substitute(src, dst);
+                        z3::expr phi_count = z3::mk_and(phi_count_items);
+
+                        // 1. phi_core --> dfa
+                        mona_translator mona_tl(z3_ctx(), phi_core);
+
+                        mona_tl.write_to_file("phi_core.mona");
+                        std::map<std::string, std::string> model;
+                        mona_executor mona_exe;
+                        mona_exe.set_args("-q");
+                        mona_exe.set_name("phi_core.mona");
+                        bool is_sat = mona_exe.execute(model);
+                        if (!is_sat) {
+                                continue;
+                        } else {
+                                mona_exe.set_args("-w -u -q");
+                                mona_exe.set_name("phi_core.mona");
+                                std::cout << "execute mona -w -u phi_core.mona\n";
+                                mona_exe.execute("phi_core.dfa");
+                                // construct PA
 
 
-        mona_translator mona_tl(z3_ctx(), f_abs);
+                                break;
+                        }
 
-        mona_tl.write_to_file("test.mona");
-        std::map<std::string, std::string> model;
-        mona_executor mona_exe;
-        mona_exe.set_args("-q");
-        mona_exe.set_name("test.mona");
-        std::cout << "execute mona -q test.mona\n";
-        bool is_sat = mona_exe.execute(model);
-        // std::cout << "sat: " << is_sat << std::endl;
 
-        if (is_sat)
-                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
-        else {
-                return z3::unsat;
+
+                        // std::cout << "phi_core: " << phi_core << std::endl;
+
+                        // std::cout << "phi_count: " << phi_count << std::endl;
+                }
+
+
+
+
         }
+
+
 
 
 /*
@@ -348,6 +477,8 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                 // 1.2.1 supposing atom is empty
 
                 z3::expr phi_pd = delta_ge1_predicates[index]; // the predicate data closure
+                z3::expr phi_pd_tms = m_pred_tms[index]; // Tm op 0 terms
+
                 z3::expr b_false = z3_ctx().bool_val(false);
                 if (phi_pd.hash() == b_false.hash()) return b_false;
 
@@ -497,6 +628,13 @@ z3::expr listsetsolver::pred2abs(z3::expr &atom, int i, z3::expr_vector& new_boo
                         //or_2 = z3_ctx().bool_val(false);
                 }
 
+                if (phi_pd_tms.to_string() != "true") {
+                        phi_pd_tms = phi_pd_tms.substitute(alpha, gamma_2).substitute(f_args, a_args);
+                        for (int i=0; i<phi_pd_tms.num_args(); i++) {
+                                m_free_items.push_back(phi_pd_tms.arg(i));
+                        }
+                }
+
                 // 1.3 or
                 atom_f = !(!or_0 && !or_1 && !or_2);
 
@@ -590,17 +728,18 @@ z3::expr listsetsolver::compute_tr_by_case(int case_i, z3::expr &phi_r1, z3::exp
         } else if (case_i % 2 == 0) {
                 // S2 is possible empty
                 if (case_i != 4)
-                        return compute_tr_by_case_02(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
+                        phi_pd = compute_tr_by_case_02(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 else{
-                        return compute_tr_by_case4(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
+                        phi_pd = compute_tr_by_case4(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 }
         } else {
                 if (case_i != 5) {
-                        return compute_tr_by_case_13(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
+                        phi_pd = compute_tr_by_case_13(case_i, phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 } else {
-                        return compute_tr_by_case5(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
+                        phi_pd = compute_tr_by_case5(phi_r1, strt_phi_r2, phi_r2_items, set_vars);
                 }
         }
+        if (case_i != 5) m_pred_tms.push_back(z3_ctx().bool_val(true)); // pred_tms
         return phi_pd;
 }
 
@@ -952,7 +1091,7 @@ z3::expr listsetsolver::compute_tr_by_case5(z3::expr &phi_r1, z3::expr &strt_phi
         z3::expr set_u = expr_tool::mk_set_var(z3_ctx(), "SS");
         z3::expr_vector src5(z3_ctx());
         src5.push_back(set_u);
-                //expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S3, set_min_e_s2);// E_S3 \union {min(E_S2)}
+        //expr_tool::mk_binary_set(z3_ctx(), "setunion", E_S3, set_min_e_s2);// E_S3 \union {min(E_S2)}
         z3::expr succ_f = expr_tool::mk_belongsto(z3_ctx(), x, set_u);
         succ_f = succ_f && expr_tool::mk_belongsto(z3_ctx(), y, set_u) && y>=x+1;
         z3::expr all2_f = !(expr_tool::mk_belongsto(z3_ctx(), z, set_u) && ((z >= x+1) && (y >= z+1)));
@@ -975,8 +1114,31 @@ z3::expr listsetsolver::compute_tr_by_case5(z3::expr &phi_r1, z3::expr &strt_phi
 
         z3::expr item7 = z3::forall(pars1, all_f1) && z3::forall(pars1, all_f2);
 
+        z3::expr_vector tms(z3_ctx());
+        for(int i=0; i<phi_r2_items[0].num_args(); i++) {
+                if (phi_r2_items[0].arg(i).to_string() != "true") {
+                        tms.push_back(phi_r2_items[0].arg(i));
+                }
+        }
+        for(int i=0; i<phi_r2_items[5].num_args(); i++) {
+                if (phi_r2_items[5].arg(i).to_string() != "true") {
+                        tms.push_back(phi_r2_items[5].arg(i));
+                }
+        }
+
         z3::expr item8 = z3_ctx().bool_val(true); // quantElmt
 
+        if (tms.size() > 1) {
+                z3::expr_vector quant_elmts(z3_ctx());
+                quant_elmt(tms, quant_elmts);
+                if (quant_elmts.size() > 0) {
+                        item8 = z3::mk_and(quant_elmts);
+                }
+        }
+
+        m_pred_tms.push_back(item8);
+        // std::cout << "item8: " << item8 << std::endl;
+        // exit(0);
 
         z3::expr tr_f = item1 && item2 && item3 && item4 && item5 && item6 && item7 && item8;
 
@@ -985,6 +1147,25 @@ z3::expr listsetsolver::compute_tr_by_case5(z3::expr &phi_r1, z3::expr &strt_phi
         return phi_pd;
 }
 
+/**
+ * quant elmt of (tms)
+ * @param tms : terms
+ * @param quant_elmts : result
+ */
+void listsetsolver::quant_elmt(z3::expr_vector &tms, z3::expr_vector& quant_elmts) {
+        assert(tms.size() > 1);
+        for (int i=0; i<tms.size(); i++) {
+                for (int j=i+1; j<tms.size(); j++) {
+                        z3::expr tm1 = tms[i];
+                        z3::expr tm2 = tms[j];
+                        z3::expr result = expr_tool::get_quant_elmt(z3_ctx(), tm1, tm2);
+                        // std::cout << "result: " << result<< std::endl;
+                        if (result.to_string() != "true") {
+                                quant_elmts.push_back(result);
+                        }
+                }
+        }
+}
 
 /**
  * saturated of phi_r

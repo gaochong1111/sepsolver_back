@@ -1,4 +1,5 @@
 #include "mona_executor.h"
+#include <fstream>
 
 /**
  * run mona, and get a model from output
@@ -16,6 +17,26 @@ bool mona_executor::execute(std::map<std::string, std::string>& model) {
         }
         pclose(fp);
         return parse_model(output, model);
+}
+
+/**
+ * run mona
+ */
+void mona_executor::execute(std::string filename) {
+        std::string cmd = "mona ";
+        cmd.append(m_args);
+        cmd.append(" ").append(m_name);
+        FILE  *fp=popen(cmd.c_str(), "r");
+        std::string output;
+        char c;
+        while((c=fgetc(fp)) != EOF) {
+                output.append(1, c);
+        }
+        pclose(fp);
+
+        std::ofstream out(filename);
+        out << output;
+        out.close();
 }
 
 

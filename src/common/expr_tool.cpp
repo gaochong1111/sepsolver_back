@@ -430,3 +430,85 @@ void expr_tool::write_file(std::string fname, z3::expr &formula) {
         out << formula << std::endl;
         out.close();
 }
+
+/**
+ * tm1 : T1 op T2 + c1
+ * tm2 : T1 op T2 + c2
+ * quantelmt
+ */
+z3::expr expr_tool::get_quant_elmt(z3::context& ctx, z3::expr tm1, z3::expr tm2) {
+        // std::cout << "tm1: " << tm1 <<std::endl;
+        // std::cout << "tm2: " << tm2 << std::endl;
+        z3::expr result = ctx.bool_val(true);
+        z3::expr tm1_1 = tm1.arg(0);
+        z3::expr tm1_2 = tm1.arg(1).arg(0);
+        int c1 = tm1.arg(1).arg(1).get_numeral_int();
+        std::string op1 = tm1.decl().name().str();
+        z3::expr tm2_1 = tm2.arg(0);
+        z3::expr tm2_2 = tm2.arg(1).arg(0);
+        int c2 = tm2.arg(1).arg(1).get_numeral_int();
+        std::string op2 = tm2.decl().name().str();
+
+        int c = gcd(c1, c2);
+        c =  c1 * c2 / c; //
+        c1 = c / c1;
+        c2 = c / c2;
+        if (c != 0) {
+                int case_i = 0;
+                if (op1 == "<=") case_i = 0;
+                else if (op1 == "=") case_i = 1;
+                else if (op1 == ">=") case_i = 2;
+
+                if (op2 == "=") case_i += 3;
+                else if(op2 == ">=") case_i += 6;
+
+                // std::cout << "case_i: " << case_i << std::endl;
+
+                switch(case_i) {
+                case 0: // <= , <=
+                case 8: // >=, >=
+                        break;
+                case 7: // =, >=
+                case 6: // <=, >=
+                case 3: // <=, =
+                        result = c1 * (tm1_1 - tm1_2) <= c2 * (tm2_1 - tm2_2);
+                        break;
+                case 5: // >=, =
+                case 2: // >=, <=
+                case 1: // =, <=
+                        result = c2 * (tm2_1 - tm2_2) <= c1 * (tm1_1 - tm1_2);
+                        break;
+                case 4:
+                        result = c1 * (tm1_1 - tm1_2) == c2 * (tm2_1 - tm2_2);
+                        break;
+                default:
+                        std::cout << "quant_elmt :: NOT SUPPOERED!\n";
+                        exit(-1);
+                }
+        }
+        return result;
+}
+
+int expr_tool::gcd(int a, int b) {
+        return b == 0? a : gcd(b, a%b);
+}
+
+void expr_tool::get_items(z3::expr item, z3::expr_vector &items) {
+        if (item.is_app()) {
+                if (item.num_args() == 2) {
+                        z3::expr item1 = item.arg(0);
+                        z3::expr item2 = item.arg(1);
+                        std::string op = item.decl().name().str();
+                        if (item1.num_args() == 2) get_items(item1, items);
+                        else items.push_back(item1);
+                        if (item2.num_args() == 2) get_items(item1, items);
+                        else {
+                                if (op == "+") {
+                                        items.push_back(item2);
+                                } else {
+                                        items.push_back(item2-1); // -
+                                }
+                        }
+                }
+        }
+}

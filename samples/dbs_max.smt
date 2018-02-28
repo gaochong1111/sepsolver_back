@@ -15,7 +15,7 @@
             (exists ((?X Sls_t) (?S2 SetInt))
                     (and
                         (= ?S (setunion ?S2 (set (max ?S))))
-                        (= (max ?S) (+ (max ?S2) 1))
+                        (= (max ?S2) (- (max ?S) 1))
                         (tobool (ssep
                                  (pto ?E (sref (ref next ?X) (ref data max(?S))))
                                  (sls ?X ?S2 ?F ?S1)

@@ -16,6 +16,7 @@ public:
         void set_name(std::string name) {m_name = name;}
         void set_args(std::string args) {m_args = args;}
         bool execute(std::map<std::string, std::string>& model);
+        void execute(std::string filename);
         bool parse_model(std::string& output,  std::map<std::string, std::string>& model);
 
 };

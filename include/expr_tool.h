@@ -77,6 +77,10 @@ public:
         static bool is_bottom(z3::expr exp);
 
         static std::string get_pair(std::string pair1, std::string pair2);
+        static z3::expr get_quant_elmt(z3::context& ctx, z3::expr tm1, z3::expr tm2);
+        static int gcd(int a, int b);
+
+        static void get_items(z3::expr item, z3::expr_vector& items);
 
 };
 
