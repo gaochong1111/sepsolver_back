@@ -5,6 +5,7 @@
 #include "qgdbs_translator.h"
 #include "mona_translator.h"
 #include "mona_executor.h"
+#include "sat_rqspa.h"
 
 /**
  *###################### listsetsolver ####################################
@@ -188,10 +189,13 @@ z3::check_result listsetsolver::check_sat() {
                 }
         } else {
                 // complex case
+
+                /*
                 std::cout << "free_items size: "  << m_free_items.size() << std::endl;
                 for (int i=0; i<m_free_items.size(); i++) {
                         std::cout << m_free_items[i] << std::endl;
                 }
+                */
                 int MAX_CTX = 1 << m_free_items.size();
                 int ctx = 0;
                 z3::expr_vector src(z3_ctx());
@@ -237,7 +241,27 @@ z3::check_result listsetsolver::check_sat() {
                                 mona_exe.execute("phi_core.dfa");
                                 // construct PA
 
+                                // phi_count
+                                std::cout << "phi_count: " << phi_count << std::endl;
+                                std::set<z3::expr, exprcomp> fovs;
+                                std::set<z3::expr, exprcomp> sovs;
+                                expr_tool::get_first_order_vars(phi_count, fovs);
+                                expr_tool::get_second_order_vars(phi_count, sovs);
+                                std::cout << "first order in phi_count: " << fovs.size() << std::endl;
+                                std::cout << "second order in phi_count: " << sovs.size() << std::endl;
 
+                                sat_rqspa rqspa("phi_core.dfa", phi_count, z3_ctx());
+                                z3::expr phi_sat = rqspa.generate_expr();
+
+                                z3::solver solver(z3_ctx());
+
+                                solver.add(phi_sat);
+
+                                if (solver.check() == z3::sat) {
+                                        std::cout << "pa_phi is sat\n";
+                                } else {
+                                        std::cout << "pa_phi is unsat\n";
+                                }
                                 break;
                         }
 
