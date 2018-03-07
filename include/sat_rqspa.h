@@ -18,16 +18,18 @@ private:
         std::string m_file_name;
         std::vector<z3::expr> m_vars;
         FA m_result;
+        std::set<int> new_ids;
 public:
 sat_rqspa(std::string file_name, z3::expr phi_count, z3::context& ctx) :m_file_name(file_name), m_phi_count(phi_count), m_ctx(ctx){}
         void get_content(std::string& str);
         void get_transition(std::string& str, transition& tr);
         void read_file(FA& fa, std::string file_name, std::string prefix);
         void generate_NFA(z3::expr var, FA& nfa);
-        z3::expr generate_fovar_expr(int idx, std::vector<int> factors, int ST_MAX);
-        z3::expr generate_sovar_expr(int idx, std::vector<int> factors, int ST_MAX);
+        z3::expr generate_fovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids);
+        z3::expr generate_sovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids);
         void get_vars();
         z3::expr generate_expr();
+        z3::check_result check_sat();
 
 };
 

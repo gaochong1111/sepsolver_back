@@ -12,6 +12,7 @@
 
 
 #include <z3++.h>
+#include "expr_tool.h"
 
 class transition {
 public:
@@ -56,8 +57,9 @@ public:
         void init();
         void set_init_state(const int i_state) {m_init_state = i_state;}
         void set_accept_states(const std::vector<int>& accept_states) {m_accept_states.insert(m_accept_states.end(), accept_states.begin(), accept_states.end());}
+        std::vector<int> get_accept_states() {return m_accept_states;}
         void set_alphabet_set(const std::vector<std::string>& alphabet);
-        int get_pos(std::string str) {return m_var_to_pos[str];}
+
         std::vector<std::string> get_alphabet() {return m_alphabet;}
 
         void add_states(int n, std::string prefix);
@@ -68,13 +70,24 @@ public:
         FA product(FA& other);
         FA state_as_edge();
 
-        z3::expr to_expr(z3::context& ctx);
+        z3::expr to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, std::set<z3::expr, exprcomp>& tpaq_set);
+
 
         void print(std::string name);
 
+        void print_flow(int accept_state);
+
+        void print_model(std::set<int>& ids, z3::model& model, z3::context& ctx);
+
         std::string vec_to_str(std::vector<std::string>& vec, std::string sep=",");
+
+        int get_pos(std::string str) {return m_var_to_pos[str];}
+
+
+private:
         bool is_same_alphabet(FA& other);
         bool interset_edge(std::vector<std::string>& vec1, std::vector<std::string>& vec2, std::vector<std::string>& result);
+
 
 
 };

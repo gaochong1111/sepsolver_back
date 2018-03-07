@@ -39,15 +39,29 @@
 (declare-fun E1() Sls_t)
 (declare-fun F1() Sls_t)
 
+(declare-fun x1() Int)
+(declare-fun x2() Int)
+(declare-fun x3() Int)
+
 
 (assert (and
         ; (= S2 (setminus S S3))
-        (= (min S2)  (+ (min S1) 6))
+         (= (min S2)  (+ (min S1) 6))
+        ;(not (and
+        ;    (distinct (min S2)  (+ (min S1) 6))
+        ;    (distinct (min S2)  (+ (min S1) 8))
+        ;    )
+        ;)
+        
+
         ; (= (min S1) (+ (max S3) 1))
         ; (= (min S4)  (+ (min S3) 8))
         (distinct S1 S2)
         ;(> (min S1) 2)
-        ; (<= (- (min S1) (+ (min S2) (min S2))) 0)
+        ; (>= (- (+ x2 x3) x1) 0)
+        ; (= (- (* 5 (- (min S2) (min S1))) (* 3 (- (max S1) (max S2)))) 0)
+        ;
+
 
         (tobool
             ; (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))

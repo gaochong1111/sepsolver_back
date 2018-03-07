@@ -2,10 +2,12 @@
 #include <climits>
 #include <fstream>
 
+
 #include "qgdbs_translator.h"
 #include "mona_translator.h"
 #include "mona_executor.h"
 #include "sat_rqspa.h"
+#include "time_tool.h"
 
 /**
  *###################### listsetsolver ####################################
@@ -100,7 +102,7 @@ z3::check_result listsetsolver::check_sat() {
         get_data_space(formula, data, space);
 
 
-        // std::cout << "data: " << data << std::endl;
+        std::cout << "data: " << data << std::endl;
         // std::cout << "space: " << space << std::endl;
 
         // get abstraction
@@ -109,6 +111,9 @@ z3::check_result listsetsolver::check_sat() {
         // check data
 
         bool is_data = check_data(f_abs);
+
+        std::cout << "check data \n";
+
         if (!is_data) {
                 std::cout << "THE DATA FORMULA IS NOT SUPPORTED!\n";
                 exit(-1);
@@ -190,12 +195,13 @@ z3::check_result listsetsolver::check_sat() {
         } else {
                 // complex case
 
-                /*
+
+
                 std::cout << "free_items size: "  << m_free_items.size() << std::endl;
                 for (int i=0; i<m_free_items.size(); i++) {
                         std::cout << m_free_items[i] << std::endl;
                 }
-                */
+
                 int MAX_CTX = 1 << m_free_items.size();
                 int ctx = 0;
                 z3::expr_vector src(z3_ctx());
@@ -204,7 +210,14 @@ z3::check_result listsetsolver::check_sat() {
                         src.push_back(m_free_items[i]);
                 }
 
+
+
+                time_tool time_tl;
+
                 while(ctx < MAX_CTX) {
+
+                        // 2. start timer
+
                         z3::expr_vector dst(z3_ctx());
                         z3::expr_vector phi_count_items(z3_ctx());
 
@@ -218,9 +231,12 @@ z3::check_result listsetsolver::check_sat() {
                                         phi_count_items.push_back(!m_free_items[i]);
                                 }
                         }
-                        ctx++;
 
+                        expr_tool::write_file("f_abs.smt", f_abs);
                         z3::expr phi_core = f_abs.substitute(src, dst);
+
+                        expr_tool::write_file("phi_core.smt", phi_core);
+
                         z3::expr phi_count = z3::mk_and(phi_count_items);
 
                         // 1. phi_core --> dfa
@@ -232,14 +248,27 @@ z3::check_result listsetsolver::check_sat() {
                         mona_exe.set_args("-q");
                         mona_exe.set_name("phi_core.mona");
                         bool is_sat = mona_exe.execute(model);
+
+                        std::cout << "ctx: " << ctx << ", phi_core is_sat: " << is_sat << std::endl;
+
                         if (!is_sat) {
+                                ctx++;
                                 continue;
                         } else {
+
+                                std::cout << "exptected model: " << std::endl;
+                                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+
+                                time_tl.begin();
+
                                 mona_exe.set_args("-w -u -q");
                                 mona_exe.set_name("phi_core.mona");
                                 std::cout << "execute mona -w -u phi_core.mona\n";
                                 mona_exe.execute("phi_core.dfa");
                                 // construct PA
+
+                                //z3::expr S = expr_tool::mk_set_var(z3_ctx(), "S") ;
+                                //phi_count = expr_tool::mk_min_max(z3_ctx(), 1, S) <= 2;
 
                                 // phi_count
                                 std::cout << "phi_count: " << phi_count << std::endl;
@@ -251,19 +280,31 @@ z3::check_result listsetsolver::check_sat() {
                                 std::cout << "second order in phi_count: " << sovs.size() << std::endl;
 
                                 sat_rqspa rqspa("phi_core.dfa", phi_count, z3_ctx());
-                                z3::expr phi_sat = rqspa.generate_expr();
 
-                                z3::solver solver(z3_ctx());
+                                z3::check_result sat_result = rqspa.check_sat();
 
-                                solver.add(phi_sat);
-
-                                if (solver.check() == z3::sat) {
+                                if (sat_result == z3::sat) {
                                         std::cout << "pa_phi is sat\n";
                                 } else {
                                         std::cout << "pa_phi is unsat\n";
                                 }
-                                break;
+                                // break;
+
+                                time_tl.end();
+
+                                long int diff = time_tl.diff();
+                                long int tv_sec = diff / 1000000;
+                                long int tv_usec = diff % 1000000;
+                                std::string info = logger().string_format("\nTotal time (sec): %ld.%06ld\n\n", tv_sec, tv_usec);
+                                std::cout << info;
+
+                                ctx++;
+                                // break;
                         }
+
+
+
+
 
 
 

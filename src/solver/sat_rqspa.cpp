@@ -114,58 +114,69 @@ void sat_rqspa::generate_NFA(z3::expr var, FA& nfa) {
 
         transition tr;
         for (int i=0; i<total; i++) {
-              tr.info.push_back("X");
+                tr.info.push_back("X");
         }
+
+        std::vector<int> accept_states;
 
         if (expr_tool::is_setint(var)) {
-                nfa.add_states(3, prefix);
+                nfa.add_states(4, prefix);
+                accept_states.push_back(3);
+
                 // add transitions
-                tr.src = 0; tr.dst = 0; tr.info[idx] = "0";
-                nfa.add_transition(tr); // 0->0
-                tr.dst = 1; tr.info[idx] = "1";
-                nfa.add_transition(tr); // 0->1
-                tr.dst = 2;
-                nfa.add_transition(tr); // 0->2
-                tr.src = 1;
-                nfa.add_transition(tr); // 1->2
-                tr.dst = 1; tr.info[idx] = "X";
+                // 0->1 : X
+                tr.src = 0; tr.dst = 1; tr.info[idx] = "X";
+                nfa.add_transition(tr);
+
+                tr.src = 1; tr.dst = 1; tr.info[idx] = "0";
                 nfa.add_transition(tr); // 1->1
-                tr.src = 2; tr.info[idx] = "0";
+                tr.dst = 2; tr.info[idx] = "1";
+                nfa.add_transition(tr); // 1->2
+                tr.dst = 3;
+                nfa.add_transition(tr); // 1->3
+                tr.src = 2;
+                nfa.add_transition(tr); // 2->3
+                tr.dst = 2; tr.info[idx] = "X";
                 nfa.add_transition(tr); // 2->2
+                tr.src = 3; tr.dst=3; tr.info[idx] = "0";
+                nfa.add_transition(tr); // 3->3
 
         } else {
-                nfa.add_states(2, prefix);
+                nfa.add_states(3, prefix);
+                accept_states.push_back(2);
                 // add transitions
-                tr.src = 0; tr.dst = 0; tr.info[idx] = "0";
-                nfa.add_transition(tr); // 0->0
-                tr.dst = 1; tr.info[idx] = "1";
-                nfa.add_transition(tr); // 0->1
-                tr.src = 1; tr.info[idx] = "0";
+                tr.src = 0; tr.dst = 1; tr.info[idx] = "X";
+                nfa.add_transition(tr);
+
+                tr.src = 1; tr.dst = 1; tr.info[idx] = "0";
                 nfa.add_transition(tr); // 1->1
+                tr.dst = 2; tr.info[idx] = "1";
+                nfa.add_transition(tr); // 1->2
+                tr.src = 2; tr.info[idx] = "0";
+                nfa.add_transition(tr); // 2->2
         }
 
+        nfa.set_accept_states(accept_states);
 }
 
 /**
  * gnerate first order var relation with new vars
  * @param idx : index in vars of phi_count
  * @param factors : state code factors
- * @param ST_MAX : MAX state code
+ * @param x_ids : related var ids
  */
-z3::expr sat_rqspa::generate_fovar_expr(int idx, std::vector<int> factors, int ST_MAX) {
+z3::expr sat_rqspa::generate_fovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids) {
 
         z3::expr_vector sum_items(m_ctx);
-        int cur = 0;
-        while (cur < ST_MAX) {
+        for (int cur : x_ids) {
                 // i-th
                 int temp = cur % factors[idx];
-                temp = cur / factors[idx+1];
+                temp = temp / factors[idx+1];
                 if (temp == 0) {
                         std::string x_name = "x_";
                         x_name.append(std::to_string(cur));
                         sum_items.push_back(m_ctx.int_const(x_name.c_str()));
                 }
-                cur++;
         }
         return m_vars[idx] == (z3::sum(sum_items)-1);
 }
@@ -174,26 +185,24 @@ z3::expr sat_rqspa::generate_fovar_expr(int idx, std::vector<int> factors, int S
  * gnerate second order var relation with new vars
  * @param idx : index in vars of phi_count
  * @param factors : state code factors
- * @param ST_MAX : MAX state code
+ * @param x_ids : related var ids
  */
-z3::expr sat_rqspa::generate_sovar_expr(int idx, std::vector<int> factors, int ST_MAX) {
+z3::expr sat_rqspa::generate_sovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids) {
         z3::expr result = m_ctx.bool_val(true);
 
         z3::expr_vector sum0_items(m_ctx);
         z3::expr_vector sum1_items(m_ctx);
-        int cur = 0;
-        while (cur < ST_MAX) {
+        for (int cur : x_ids) {
                 // i-th
                 int temp = cur % factors[idx];
                 temp = temp / factors[idx+1];
                 std::string x_name = "x_";
                 x_name.append(std::to_string(cur));
-                if (temp == 0) {
+                if (temp == 1) {
                         sum0_items.push_back(m_ctx.int_const(x_name.c_str()));
-                } else if (temp == 1) {
+                } else if (temp == 2) {
                         sum1_items.push_back(m_ctx.int_const(x_name.c_str()));
                 }
-                cur++;
         }
 
         std::string var_name = "min_";
@@ -207,8 +216,6 @@ z3::expr sat_rqspa::generate_sovar_expr(int idx, std::vector<int> factors, int S
         // std::cout << "sigma0: " << sigma0 << std::endl;
         // exit(0);
         result = (min_var == sigma0 - 1) && (max_var == min_var + z3::sum(sum1_items));
-
-
 
         return result;
 }
@@ -248,21 +255,11 @@ z3::expr sat_rqspa::generate_expr() {
                 t_fa.set_alphabet_set(phi_core.get_alphabet());
                 generate_NFA(m_vars[i], t_fa);
                 nfas.push_back(t_fa);
+                // t_fa.print("t_fa.dot");
                 state_code.push_back(t_fa.get_state_num());
         }
 
-        // compute product of all nfa
-        FA fa_result = phi_core;
-        for (int i=0; i<nfas.size(); i++) {
-                fa_result = fa_result.product(nfas[i]);
-        }
-        m_result = fa_result.state_as_edge();
-        z3::expr pa_phi = m_result.to_expr(m_ctx);
-
-        std::cout << "get pa_phi: " << std::endl;
-        // exit(0);
-
-        // generate expr relation with vars in phi_count and new vars
+        // compute factors by state_code
         int acc = 1;
         std::vector<int> factors;
         factors.push_back(1);
@@ -272,20 +269,56 @@ z3::expr sat_rqspa::generate_expr() {
                 factors.insert(factors.begin(), acc);
         }
 
-        int ST_MAX = acc * state_code[0];
-        std::cout << "ST_MAX: " << ST_MAX << std::endl;
-        z3::expr_vector var_items(m_ctx);
+        // compute product of all nfa
+        FA fa_result = phi_core;
+        for (int i=0; i<nfas.size(); i++) {
+                fa_result = fa_result.product(nfas[i]);
+        }
+        m_result = fa_result;
+        // fa_result.print("fa_result.dot");
+        FA pa = fa_result.state_as_edge();
 
-        for (int i=0; i<m_vars.size(); i++) {
-                if (expr_tool::is_setint(m_vars[i])) {
-                        var_items.push_back(generate_sovar_expr(i, factors, ST_MAX));
+        // m_result.print("result.dot");
 
-                } else {
-                        var_items.push_back(generate_fovar_expr(i, factors, ST_MAX));
+        z3::expr_vector flow_items(m_ctx);
+
+
+        std::set<z3::expr, exprcomp> tpaq_set;
+
+        for (int i=0; i<pa.get_accept_states().size(); i++) {
+                std::set<int> x_ids;
+                int accept_state = pa.get_accept_states()[i];
+
+                std::cout << "compute flow : 0 -> " << accept_state << std::endl;
+
+                pa.print_flow(accept_state);
+
+                z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, tpaq_set);
+
+                std::cout << "x_ids: " << x_ids.size() << std::endl;
+
+
+                // generate expr relation with vars in phi_count and new vars
+
+                z3::expr_vector var_items(m_ctx);
+
+                for (int i=0; i<m_vars.size(); i++) {
+                        if (expr_tool::is_setint(m_vars[i])) {
+                                var_items.push_back(generate_sovar_expr(i, factors, x_ids));
+
+                        } else {
+                                var_items.push_back(generate_fovar_expr(i, factors, x_ids));
+                        }
+                }
+
+                z3::expr var_item = z3::mk_and(var_items);
+
+                flow_items.push_back(pa_phi && var_item);
+
+                for (int id : x_ids) {
+                        new_ids.insert(id);
                 }
         }
-
-        z3::expr var_item = z3::mk_and(var_items);
 
         // substitute phi_count
         z3::expr_vector src(m_ctx);
@@ -309,8 +342,77 @@ z3::expr sat_rqspa::generate_expr() {
 
         z3::expr phi_count = m_phi_count.substitute(src, dst);
         std::cout << "phi_count: " << phi_count << std::endl;
-        pa_phi = pa_phi && var_item && phi_count;
+        z3::expr result = z3::mk_or(flow_items) && phi_count;
+
+        return result;
+}
 
 
-        return pa_phi;
+/**
+ * check sat the phi of pa
+ */
+z3::check_result sat_rqspa::check_sat() {
+        z3::expr pa_phi = generate_expr();
+
+        z3::solver solver(m_ctx);
+        solver.add(pa_phi);
+
+        if (solver.check() == z3::sat) {
+                // get model
+                z3::model model = solver.get_model();
+
+                /*
+                std::cout << "new_ids: ";
+                for (int i : new_ids) {
+                        std::cout << " " << i << ",";
+                }
+                std::cout << std::endl;
+                */
+
+                m_result.print_model(new_ids, model, m_ctx);
+
+
+
+                for (int i=0; i<m_vars.size(); i++) {
+                        z3::expr sov = m_vars[i];
+                        std::string var_name = "min_";
+                        var_name.append(sov.to_string());
+                        z3::expr min_v = m_ctx.int_const(var_name.c_str());
+                        var_name = "max_";
+                        var_name.append(sov.to_string());
+                        z3::expr max_v = m_ctx.int_const(var_name.c_str());
+                        z3::expr min_val = model.get_const_interp(min_v.decl());
+                        z3::expr max_val = model.get_const_interp(max_v.decl());
+
+                        std::cout << min_v << ": " << min_val << std::endl;
+                        std::cout << max_v << ": " << max_val << std::endl;
+                }
+
+                /*
+                for (int i : new_ids) {
+                        std::string var_name = "u_";
+                        var_name.append(std::to_string(i+1));
+                        z3::expr var = m_ctx.int_const(var_name.c_str());
+                        z3::expr val = model.get_const_interp(var.decl());
+                        std::cout << var << ": " << val << std::endl;
+
+                }
+                */
+                /*
+
+                  for (z3::expr tpaq : tpaq_set) {
+                  z3::expr val = model.get_const_interp(tpaq.decl());
+                  std::cout << tpaq << ": " << val << std::endl;
+                  }
+                */
+
+
+                return z3::sat;
+
+        } else {
+                return z3::unsat;
+        }
+
+
+
 }
