@@ -77,7 +77,7 @@ public:
 
         void print_flow(int accept_state);
 
-        void print_model(std::set<int>& ids, z3::model& model, z3::context& ctx);
+        void print_model(std::string file_name, std::set<int>& ids, std::map<std::string, int>& edge_to_count, z3::model& model, z3::context& ctx,  std::vector<std::vector<std::string> >& word);
 
         std::string vec_to_str(std::vector<std::string>& vec, std::string sep=",");
 

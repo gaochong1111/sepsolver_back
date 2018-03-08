@@ -169,8 +169,8 @@ FA FA::state_as_edge() {
                         result.m_fa[boost::graph_bundle][key] = m_fa[boost::graph_bundle][key];
                 }
         }
-        std::cout << "state_count: " << result.m_state_num << std::endl;
-        std::cout << "edge_count: " << edge_count << std::endl;
+        // std::cout << "state_count: " << result.m_state_num << std::endl;
+        // std::cout << "edge_count: " << edge_count << std::endl;
         return result;
 }
 
@@ -237,6 +237,8 @@ z3::expr FA::to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, s
                         z3::expr t_p_a_q = ctx.int_const(name.c_str());
                         in_items.push_back(t_p_a_q);
 
+                        tpaq_set.insert(t_p_a_q);
+
 
                         // insert x_i
                         std::string x_i_key = "x_";
@@ -271,6 +273,9 @@ z3::expr FA::to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, s
                                 name.append(std::to_string(i)).append("_").append(std::to_string(i_edge)).append("_").append(std::to_string(i_target));
                                 z3::expr t_p_a_q = ctx.int_const(name.c_str());
                                 out_items.push_back(t_p_a_q);
+
+                                tpaq_set.insert(t_p_a_q);
+
 
                                 // make var u_
 
@@ -328,14 +333,13 @@ z3::expr FA::to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, s
                 z3::expr_vector s_items(ctx);
                 for (int j=0; j<xi_to_tpaq[x_i_name].size(); j++) {
                         s_items.push_back(xi_to_tpaq[x_i_name][j]);
-                        tpaq_set.insert(xi_to_tpaq[x_i_name][j]);
                 }
                 sum_items.push_back(x_i == z3::sum(s_items));
         }
 
         z3::expr_vector ge_zero_items(ctx);
 
-        std::cout << "tpaq size: " << tpaq_set.size() << std::endl;
+        // std::cout << "tpaq size: " << tpaq_set.size() << std::endl;
 
         for (z3::expr tpaq : tpaq_set) {
                 ge_zero_items.push_back(tpaq>=0);
@@ -396,11 +400,20 @@ void FA::print(std::string name) {
         out.close();
 }
 
+/**
+ * print model -> file_name
+ * @param file_name
+ * @param ids : edge_count
+ * @param ids : edge_count
+ * @param model : z3 model
+ * @param ctx
+ * @param word
+ */
+void FA::print_model(std::string file_name, std::set<int>& ids, std::map<std::string, int>& edge_count, z3::model& model, z3::context& ctx, std::vector<std::vector<std::string> >& word) {
 
-void FA::print_model(std::set<int>& ids, z3::model& model, z3::context& ctx) {
-        assert(ids.find(0) != ids.end());
+        std::cout << "write model into file: " << file_name << std::endl;
 
-        std::ofstream out("model.dot");
+        std::ofstream out(file_name);
         out << "digraph {\n";
 
         std::vector<int> work_list;
@@ -408,7 +421,7 @@ void FA::print_model(std::set<int>& ids, z3::model& model, z3::context& ctx) {
         work_list.push_back(0);
 
         for (int i=0; i<m_accept_states.size(); i++) {
-                out << "node_" << m_accept_states[i] << "_1 [shape = doublecircle];\n";
+                out << "node_" << m_accept_states[i] << " [shape = doublecircle];\n";
         }
 
         while(work_list.size() != 0) {
@@ -416,9 +429,6 @@ void FA::print_model(std::set<int>& ids, z3::model& model, z3::context& ctx) {
                 // std::cout << "cur_state: " << cur_state << std::endl;
                 work_list.pop_back();
 
-                if (state_set.find(cur_state) != state_set.end()) {
-                        continue;
-                }
                 state_set.insert(cur_state);
 
                 std::string src_name = "x_";
@@ -427,37 +437,67 @@ void FA::print_model(std::set<int>& ids, z3::model& model, z3::context& ctx) {
 
                 z3::expr src_val = model.get_const_interp(x_src.decl());
 
-                // std::cout << "state: " << cur_state << ": " << src_val << std::endl;
+                automata::out_edge_iterator i_start, i_end, i_out;
+                int i_dst = -1;
+                std::string key;
 
-                if (src_val.get_numeral_int() > 0) {
-                        automata::out_edge_iterator i_start, i_end;
-                        tie(i_start, i_end) = boost::out_edges(cur_state, m_fa);
-                        for (; i_start != i_end; ++i_start) {
-                                // edge : i -> i_target
-                                int i_target = boost::target(*i_start, m_fa);
+                tie(i_start, i_end) = boost::out_edges(cur_state, m_fa);
+                for (; i_start != i_end; ++i_start) {
+                        // edge : i -> i_target
+                        int i_target = boost::target(*i_start, m_fa);
 
-                                if (ids.find(i_target) != ids.end()) {
-                                        std::string dst_name = "x_";
-                                        dst_name.append(std::to_string(i_target));
-                                        z3::expr x_dst = ctx.int_const(dst_name.c_str());
+                        if (ids.find(i_target) != ids.end()) {
 
-                                        z3::expr dst_val = model.get_const_interp(x_dst.decl());
+                                // get edge count
+                                std::string t_paq_name  = "t_";
+                                std::vector<std::string> target = m_fa[i_target];
+                                std::string edge_key = vec_to_str(target);
+                                int id = m_fa[boost::graph_bundle][edge_key];
+                                t_paq_name.append(std::to_string(cur_state+1));
+                                t_paq_name.append("_");
+                                t_paq_name.append(std::to_string(id));
+                                t_paq_name.append("_");
+                                t_paq_name.append(std::to_string(i_target+1));
 
-                                        // std::cout << "state: " << i_target << ": " << dst_val << std::endl;
+                                if (edge_count.find(t_paq_name) == edge_count.end()) {
+                                        std::cout << "t_paq: " << t_paq_name << " NOT EXISTS!\n";
+                                        exit(-1);
 
-                                        if (dst_val.get_numeral_int() > 0) {
-                                                if (state_set.find(i_target) == state_set.end()) {
-                                                        work_list.push_back(i_target);
-                                                }
+                                }
+                                int i_edge_count = edge_count[t_paq_name];
 
-                                                std::vector<std::string> i_edge = m_fa[*i_start];
-                                                std::string edge_info = vec_to_str(i_edge);
+                                // std::cout << "i_edge_count: " << t_paq_name << ": " << i_edge_count << std::endl;
 
-                                                out << "node_" << cur_state << "_" << src_val << " -> " << "node_" << i_target << "_" << dst_val << "[label=\""<< edge_info <<"\"]\n";
-
+                                if (state_set.find(i_target) == state_set.end()) {
+                                        if (i_edge_count > 0) {
+                                                i_out = i_start;
+                                                i_dst = i_target;
+                                                key = t_paq_name;
+                                        }
+                                } else {
+                                        // i_target in state_set
+                                        if (i_edge_count > 0) {
+                                                i_out = i_start;
+                                                i_dst = i_target;
+                                                key = t_paq_name;
+                                                break;
                                         }
                                 }
                         }
+                }
+
+
+                // out
+                if (i_dst != -1) {
+                        std::vector<std::string> i_edge = m_fa[*i_out];
+
+                        word.push_back(i_edge);
+                        edge_count[key]--;
+
+                        std::string edge_info = vec_to_str(i_edge);
+                        work_list.push_back(i_dst);
+
+                        out << "node_" << cur_state  << " -> " << "node_" << i_dst  << "[label=\""<< edge_info <<"\"]\n";
                 }
         }
 

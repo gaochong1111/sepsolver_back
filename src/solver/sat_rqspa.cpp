@@ -247,7 +247,7 @@ z3::expr sat_rqspa::generate_expr() {
         state_code.push_back(total);
         //
         get_vars();
-        std::cout << "get vars : " << m_vars.size() << std::endl;
+        // std::cout << "get vars : " << m_vars.size() << std::endl;
         // generate nfa for var in phi_count
         std::vector<FA> nfas;
         for (int i=0; i<m_vars.size(); i++) {
@@ -283,7 +283,7 @@ z3::expr sat_rqspa::generate_expr() {
         z3::expr_vector flow_items(m_ctx);
 
 
-        std::set<z3::expr, exprcomp> tpaq_set;
+        // std::set<z3::expr, exprcomp> tpaq_set;
 
         for (int i=0; i<pa.get_accept_states().size(); i++) {
                 std::set<int> x_ids;
@@ -293,9 +293,9 @@ z3::expr sat_rqspa::generate_expr() {
 
                 pa.print_flow(accept_state);
 
-                z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, tpaq_set);
+                z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, m_tpaq_set);
 
-                std::cout << "x_ids: " << x_ids.size() << std::endl;
+                // std::cout << "x_ids: " << x_ids.size() << std::endl;
 
 
                 // generate expr relation with vars in phi_count and new vars
@@ -341,7 +341,7 @@ z3::expr sat_rqspa::generate_expr() {
         }
 
         z3::expr phi_count = m_phi_count.substitute(src, dst);
-        std::cout << "phi_count: " << phi_count << std::endl;
+        // std::cout << "phi_count: " << phi_count << std::endl;
         z3::expr result = z3::mk_or(flow_items) && phi_count;
 
         return result;
@@ -350,8 +350,11 @@ z3::expr sat_rqspa::generate_expr() {
 
 /**
  * check sat the phi of pa
+ * @param vars : vars in model
+ * @param m_model : m_model
+ * @return check_result
  */
-z3::check_result sat_rqspa::check_sat() {
+z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std::string, std::string>& m_model) {
         z3::expr pa_phi = generate_expr();
 
         z3::solver solver(m_ctx);
@@ -361,18 +364,72 @@ z3::check_result sat_rqspa::check_sat() {
                 // get model
                 z3::model model = solver.get_model();
 
-                /*
-                std::cout << "new_ids: ";
-                for (int i : new_ids) {
-                        std::cout << " " << i << ",";
+                // std::cout << "tpaq size: " << m_tpaq_set.size() << std::endl;
+                std::map<std::string, int> edge_to_count; // edge -> times
+                for (z3::expr tpaq : m_tpaq_set) {
+                        if (model.has_interp(tpaq.decl())) {
+                                z3::expr val = model.get_const_interp(tpaq.decl());
+                                edge_to_count[tpaq.to_string()] = val.get_numeral_int();
+
+                        } else {
+                                std::cout<< tpaq << "   NO TPAQ.\n";
+                                exit(-1);
+                        }
                 }
-                std::cout << std::endl;
-                */
 
-                m_result.print_model(new_ids, model, m_ctx);
+                // check init state in new_ids
+                if (new_ids.find(0) == new_ids.end()) {
+                        return z3::unsat;
+                }
+
+                std::vector< std::vector< std::string> > word;
+                m_result.print_model("sat_model.dot", new_ids, edge_to_count, model, m_ctx, word);
+
+                // std::cout << "word len: " <<  word.size() << std::endl;
+                for (int i=0; i<vars.size(); i++) {
+                        z3::expr var = vars[i];
+                        int pos = m_result.get_pos(var.to_string());
+                        std::string key = var.to_string();
+
+                        // std::cout << "var: "<< var << ", pos: "<< pos << ", sort: " << var.get_sort() <<std::endl;
 
 
+                        if (var.is_bool()) {
+                                if (word[0][pos] == "0") {
+                                        m_model[key] = "false";
+                                } else {
+                                        m_model[key] = "true";
+                                }
+                        } else {
+                                std::string val;
+                                std::vector<std::string> val_vec;
+                                for (int j=1; j<word.size(); j++) {
+                                        if (word[j][pos] == "1") {
+                                                val = std::to_string(j-1);
+                                                if (var.is_int()) {
+                                                        break;
+                                                } else {
+                                                        val_vec.push_back(val);
+                                                }
+                                        }
+                                }
 
+                                //
+                                if (val_vec.size() == 0) {
+                                        m_model[key] = val;
+                                } else {
+                                        std::string val_str = "{";
+                                        val_str.append(m_result.vec_to_str(val_vec, ", ")).append("}");
+                                        m_model[key] = val_str;
+                                }
+                        }
+
+
+                        // std::cout << key << "->"  << m_model[key] << std::endl;
+
+                }
+
+                /*
                 for (int i=0; i<m_vars.size(); i++) {
                         z3::expr sov = m_vars[i];
                         std::string var_name = "min_";
@@ -387,32 +444,11 @@ z3::check_result sat_rqspa::check_sat() {
                         std::cout << min_v << ": " << min_val << std::endl;
                         std::cout << max_v << ": " << max_val << std::endl;
                 }
-
-                /*
-                for (int i : new_ids) {
-                        std::string var_name = "u_";
-                        var_name.append(std::to_string(i+1));
-                        z3::expr var = m_ctx.int_const(var_name.c_str());
-                        z3::expr val = model.get_const_interp(var.decl());
-                        std::cout << var << ": " << val << std::endl;
-
-                }
                 */
-                /*
-
-                  for (z3::expr tpaq : tpaq_set) {
-                  z3::expr val = model.get_const_interp(tpaq.decl());
-                  std::cout << tpaq << ": " << val << std::endl;
-                  }
-                */
-
 
                 return z3::sat;
 
         } else {
                 return z3::unsat;
         }
-
-
-
 }

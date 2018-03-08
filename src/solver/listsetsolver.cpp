@@ -120,6 +120,7 @@ z3::check_result listsetsolver::check_sat() {
         }
 
 
+
         z3::expr space_abs = z3_ctx().bool_val(true);
         z3::expr star_abs = z3_ctx().bool_val(true);
         if (Z3_ast(space) != 0) {
@@ -194,7 +195,10 @@ z3::check_result listsetsolver::check_sat() {
                 }
         } else {
                 // complex case
-
+                std::vector<z3::expr> vars;
+                vars.insert(vars.end(), bool_vars_set.begin(), bool_vars_set.end());
+                vars.insert(vars.end(), fo_vars_set1.begin(), fo_vars_set1.end());
+                vars.insert(vars.end(), so_vars_set.begin(), so_vars_set.end());
 
 
                 std::cout << "free_items size: "  << m_free_items.size() << std::endl;
@@ -251,13 +255,10 @@ z3::check_result listsetsolver::check_sat() {
 
                         std::cout << "ctx: " << ctx << ", phi_core is_sat: " << is_sat << std::endl;
 
-                        if (!is_sat) {
-                                ctx++;
-                                continue;
-                        } else {
+                        if (is_sat) {
 
-                                std::cout << "exptected model: " << std::endl;
-                                display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+                                // std::cout << "exptected model: " << std::endl;
+                                // display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
 
                                 time_tl.begin();
 
@@ -272,24 +273,24 @@ z3::check_result listsetsolver::check_sat() {
 
                                 // phi_count
                                 std::cout << "phi_count: " << phi_count << std::endl;
-                                std::set<z3::expr, exprcomp> fovs;
-                                std::set<z3::expr, exprcomp> sovs;
-                                expr_tool::get_first_order_vars(phi_count, fovs);
-                                expr_tool::get_second_order_vars(phi_count, sovs);
-                                std::cout << "first order in phi_count: " << fovs.size() << std::endl;
-                                std::cout << "second order in phi_count: " << sovs.size() << std::endl;
+                                // std::set<z3::expr, exprcomp> fovs;
+                                // std::set<z3::expr, exprcomp> sovs;
+                                // expr_tool::get_first_order_vars(phi_count, fovs);
+                                // expr_tool::get_second_order_vars(phi_count, sovs);
+                                // std::cout << "first order in phi_count: " << fovs.size() << std::endl;
+                                // std::cout << "second order in phi_count: " << sovs.size() << std::endl;
 
                                 sat_rqspa rqspa("phi_core.dfa", phi_count, z3_ctx());
 
-                                z3::check_result sat_result = rqspa.check_sat();
+                                z3::check_result sat_result = rqspa.check_sat(vars, model);
 
                                 if (sat_result == z3::sat) {
-                                        std::cout << "pa_phi is sat\n";
+                                        // std::cout << "pa_phi is sat\n";
+                                        display_model(bool_vars_set, fo_vars_set1, so_vars_set, model);
+                                        return z3::sat;
                                 } else {
                                         std::cout << "pa_phi is unsat\n";
                                 }
-                                // break;
-
                                 time_tl.end();
 
                                 long int diff = time_tl.diff();
@@ -298,27 +299,11 @@ z3::check_result listsetsolver::check_sat() {
                                 std::string info = logger().string_format("\nTotal time (sec): %ld.%06ld\n\n", tv_sec, tv_usec);
                                 std::cout << info;
 
-                                ctx++;
-                                // break;
                         }
-
-
-
-
-
-
-
-                        // std::cout << "phi_core: " << phi_core << std::endl;
-
-                        // std::cout << "phi_count: " << phi_count << std::endl;
+                        ctx++;
                 }
-
-
-
-
+                return z3::unsat;
         }
-
-
 
 
 /*
