@@ -1,98 +1,66 @@
-(let ((a!1 (setunion ?S1 (setunion (set (min ?S)) (set (max ?S)))))
-      (a!2 (and true (>= (max ?S) (+ (min ?S) 5))))
-      (a!3 (and true (<= (min ?S1) (+ (max ?S1) 0)))))
-(let ((a!4 (and (= ?S a!1)
+(let ((a!1 (= ?S (setunion ?S1 (set (min ?S)))))
+      (a!2 (and true (>= (max ?S) (+ (min ?S) 1))))
+      (a!3 (and true (<= (min ?S1) (+ (max ?S1) 0))))
+      (a!5 (not (not (forall ((E_S1 SetInt) (E_S2 SetInt))
+                       (let ((a!1 (= ?S (setunion E_S1 (set (min ?S)))))
+                             (a!2 (= E_S2 (setunion ?S1 (set (min E_S2)))))
+                             (a!3 (not (not (forall ((ES_X SetInt))
+                                              (let ((a!1 (and (>= (min E_S2)
+                                                                  (+ (max ES_X)
+                                                                     1))
+                                                              (= ES_X
+                                                                 (setminus E_S1
+                                                                           E_S2)))))
+                                                (not a!1))))))
+                             (a!5 (and true (>= (max ?S) (+ (min ?S) 1))))
+                             (a!6 (and true (<= (min ?S1) (+ (max ?S1) 0))))
+                             (a!7 (forall ((x Int) (y Int))
+                                    (let ((a!1 (subset (set x)
+                                                       (setunion (setminus E_S1
+                                                                           E_S2)
+                                                                 (set (min E_S2)))))
+                                          (a!2 (subset (set y)
+                                                       (setunion (setminus E_S1
+                                                                           E_S2)
+                                                                 (set (min E_S2)))))
+                                          (a!3 (forall ((z Int))
+                                                 (let ((a!1 (subset (set z)
+                                                                    (setunion (setminus E_S1
+                                                                                        E_S2)
+                                                                              (set (min E_S2))))))
+                                                   (not (and a!1
+                                                             (>= z (+ x 1))
+                                                             (>= y (+ z 1)))))))
+                                          (a!4 (not (and true (= y (+ x 1))))))
+                                      (not (and a!1 a!2 (>= y (+ x 1)) a!3 a!4))))))
+                       (let ((a!4 (and (not (= (setminus E_S1 E_S2) emptyset))
+                                       a!3)))
+                       (let ((a!8 (and a!1
+                                       a!2
+                                       (subset E_S2 E_S1)
+                                       (not (= ?S1 emptyset))
+                                       (not a!4)
+                                       true
+                                       (= (min E_S1) (+ (min ?S) 1))
+                                       true
+                                       (= (min ?S1) (+ (min E_S2) 1))
+                                       a!5
+                                       true
+                                       (>= (max E_S2) (+ (min E_S2) 1))
+                                       a!6
+                                       true
+                                       (<= (min E_S1) (+ (max E_S1) 0))
+                                       a!7)))
+                         (not a!8)))))))))
+(let ((a!4 (and a!1
                 true
-                (= (min ?S1) (+ (min ?S) 2))
+                (= (min ?S1) (+ (min ?S) 1))
                 a!2
                 true
-                (>= (max ?S1) (+ (min ?S) 2))
+                (>= (max ?S1) (+ (min ?S) 1))
                 true
-                (>= (max ?S) (+ (min ?S1) 3))
+                (<= (min ?S1) (+ (max ?S) 0))
                 a!3
                 true
-                (= (max ?S) (+ (max ?S1) 3)))))
-  (not (and (not (= ?S ?S1))
-            (not a!4)
-            (forall ((E_S1 SetInt) (E_S2 SetInt) (E_S3 SetInt) (E_S4 SetInt))
-              (let ((a!1 (setunion E_S1
-                                   (setunion (set (min ?S)) (set (max ?S)))))
-                    (a!2 (setunion ?S1
-                                   (setunion (set (min E_S2)) (set (max E_S2)))))
-                    (a!3 (not (and (not (= E_S3 emptyset))
-                                   (>= (max E_S3) (min E_S2)))))
-                    (a!4 (not (and (not (= E_S4 emptyset))
-                                   (>= (max E_S2) (min E_S4)))))
-                    (a!5 (and true (>= (max ?S) (+ (min ?S) 5))))
-                    (a!6 (and true (<= (min ?S1) (+ (max ?S1) 0))))
-                    (a!7 (= (* 3 (- (min ?S1) (min ?S)))
-                            (* 2 (- (max ?S) (max ?S1))))))
-              (let ((a!8 (and (= ?S a!1)
-                              (= E_S1 (setunion (setunion E_S2 E_S3) E_S4))
-                              (= E_S2 a!2)
-                              a!3
-                              a!4
-                              true
-                              (= (min ?S1) (+ (min E_S2) 2))
-                              true
-                              (= (min E_S1) (+ (min ?S) 2))
-                              a!5
-                              true
-                              (>= (max E_S2) (+ (min E_S2) 5))
-                              true
-                              (>= (max ?S1) (+ (min E_S2) 2))
-                              true
-                              (>= (max E_S1) (+ (min ?S) 2))
-                              true
-                              (>= (max E_S2) (+ (min ?S1) 3))
-                              true
-                              (>= (max ?S) (+ (min E_S1) 3))
-                              a!6
-                              true
-                              (<= (min E_S1) (+ (max E_S1) 0))
-                              true
-                              (= (max E_S2) (+ (max ?S1) 3))
-                              true
-                              (= (max ?S) (+ (max E_S1) 3))
-                              (forall ((x Int) (y Int))
-                                (let ((a!1 (subset (set x)
-                                                   (setunion E_S3
-                                                             (set (min E_S2)))))
-                                      (a!2 (subset (set y)
-                                                   (setunion E_S3
-                                                             (set (min E_S2)))))
-                                      (a!3 (not (and true (= y (+ x 2))))))
-                                (let ((a!4 (and a!1
-                                                a!2
-                                                (>= y (+ x 1))
-                                                (forall ((z Int))
-                                                  (let ((a!1 (subset (set z)
-                                                                     (setunion E_S3
-                                                                               (set (min E_S2)))))
-                                                        (a!2 (and (>= z (+ x 1))
-                                                                  (>= y (+ z 1)))))
-                                                    (not (and a!1 a!2))))
-                                                a!3)))
-                                  (not a!4))))
-                              (forall ((x Int) (y Int))
-                                (let ((a!1 (subset (set x)
-                                                   (setunion E_S4
-                                                             (set (max E_S2)))))
-                                      (a!2 (subset (set y)
-                                                   (setunion E_S4
-                                                             (set (max E_S2)))))
-                                      (a!3 (not (and true (= y (+ x 3))))))
-                                (let ((a!4 (and a!1
-                                                a!2
-                                                (>= y (+ x 1))
-                                                (forall ((z Int))
-                                                  (let ((a!1 (subset (set z)
-                                                                     (setunion E_S4
-                                                                               (set (max E_S2)))))
-                                                        (a!2 (and (>= z (+ x 1))
-                                                                  (>= y (+ z 1)))))
-                                                    (not (and a!1 a!2))))
-                                                a!3)))
-                                  (not a!4))))
-                              a!7)))
-                (not a!8))))))))
+                (= (max ?S) (+ (max ?S1) 0)))))
+  (not (and (not (= ?S ?S1)) (not a!4) a!5))))

@@ -512,3 +512,14 @@ void expr_tool::get_items(z3::expr item, z3::expr_vector &items) {
                 }
         }
 }
+
+
+z3::expr expr_tool::mk_int_var(z3::context& ctx, std::string prefix, int i) {
+        prefix.append(std::to_string(i));
+        return ctx.int_const(prefix.c_str());
+}
+
+z3::expr expr_tool::mk_int_var(z3::context& ctx, std::string prefix, int p, int a, int q) {
+        prefix.append(std::to_string(p)).append("_").append(std::to_string(a)).append("_").append(std::to_string(q));
+        return ctx.int_const(prefix.c_str());
+}

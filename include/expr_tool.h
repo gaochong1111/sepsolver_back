@@ -82,6 +82,11 @@ public:
 
         static void get_items(z3::expr item, z3::expr_vector& items);
 
+        // used by fa.h
+        static z3::expr mk_int_var(z3::context& ctx, std::string prefix, int i);
+        static z3::expr mk_int_var(z3::context& ctx, std::string prefix, int p, int a, int q);
+
+
 };
 
 

@@ -45,27 +45,18 @@
 
 
 (assert (and
-        ;(= S2 (setminus S S3))
-        ; (= (min S2)  (+ (min S1) 8))
-        (not (and
-            (distinct (min S2)  (+ (min S1) 6))
-            (distinct (min S2)  (+ (min S1) 8))
-            )
-        )
-        
+        (= (min S2)  (+ (min S1) 6))
+        (= (max S2) (+ (min S2) 0))
 
-        ; (= (min S1) (+ (max S3) 1))
-        ; (= (min S4)  (+ (min S3) 8))
-        (distinct S1 S2)
-        ;(> (min S1) 2)
-        ; (>= (- (+ x2 x3) x1) 0)
-        (= (- (* 5 (- (min S2) (min S1))) (* 3 (- (max S1) (max S2)))) 0)
-        ;
+        (= (min S1) (+ (max S3) 1))
+        (= (min S4)  (+ (min S3) 6))
+        (= (max S4) (+ (min S4) 0))
 
+        ; (= (- (* 5 (- (min S2) (min S1))) (* 3 (- (max S1) (max S2)))) 0)
 
         (tobool
-            ; (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
-            (sls E S1 F S2)
+             (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))
+            ;(sls E S1 F S2)
         )
 )
 

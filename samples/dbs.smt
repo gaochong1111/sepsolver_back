@@ -46,16 +46,12 @@
 
 
 (assert (and
-        ; (> (min S1) 1)
-        ; (not (subset S2 S1) )
-        ; (distinct E F)
-        ; (>= min(S1) )
-        ; (= S2 (setminus S S3))
-        (= (min S2)  (+ (min S1) 7))
-        ;(= (min S1) (+ (max S3) 1))
-        (= (min S4)  (+ (min S3) 8))
-
-        ; (= (max S2) 2)
+        (= (min S2)  (+ (min S1) 4))
+        ; (= (min S1) (+ (max S3) 1))
+        (= (- (min S1) (max S3)) 1)
+        (= (min S4)  (+ (min S3) 5))
+        (= (- (max S2) (min S2)) 1)
+        (= (max S4) (+ (min S4) 1))
 
         (tobool
             (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))

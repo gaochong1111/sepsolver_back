@@ -71,7 +71,7 @@ public:
         FA state_as_edge();
 
         z3::expr to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, std::set<z3::expr, exprcomp>& tpaq_set);
-
+        FA get_flow(int accept);
 
         void print(std::string name);
 
@@ -83,8 +83,11 @@ public:
 
         int get_pos(std::string str) {return m_var_to_pos[str];}
 
+        bool has_path(int src, int dst,  std::set<int>& ids, std::map<std::string, int>& edge_count);
+
 
 private:
+        void get_valid_states(int accept_state, std::set<int>& valid_ids);
         bool is_same_alphabet(FA& other);
         bool interset_edge(std::vector<std::string>& vec1, std::vector<std::string>& vec2, std::vector<std::string>& result);
 
