@@ -38,6 +38,7 @@ void FA::set_alphabet_set(const std::vector<std::string> &alphabet)  {
         m_alphabet.insert(m_alphabet.end(), alphabet.begin(), alphabet.end());
         for (int i=0; i<m_alphabet.size(); i++) {
                 m_var_to_pos[m_alphabet[i]] = i;
+                //std::cout << m_alphabet[i] << ": " <<  m_var_to_pos[m_alphabet[i]] << std::endl;
         }
 }
 
@@ -183,8 +184,34 @@ FA FA::state_as_edge() {
  * get flow as NFA
  * @param: accept: accept state
  */
-FA FA::get_flow(int accept) {
+FA FA::get_flow() {
         FA result;
+
+        // accept_states size > 1
+        if (m_accept_states.size() > 1) {
+                // add new state
+                boost::add_vertex(m_fa);
+                int new_accept = m_state_num;
+                m_state_num++;
+                for (int i=0; i<m_accept_states.size(); i++) {
+                        int accept = m_accept_states[i];
+                        automata::in_edge_iterator i_start, i_end;
+                        tie(i_start, i_end) = boost::in_edges(accept, m_fa);
+                        for (; i_start != i_end; i_start++) {
+                                int src = boost::source(*i_start, m_fa);
+                                // add new edge
+                                boost::add_edge(src, new_accept, m_fa[*i_start], m_fa);
+                        }
+                }
+                // change m_accept_states
+                m_accept_states.clear();
+                m_accept_states.push_back(new_accept);
+        }
+
+        std::cout << "add one accept.\n";
+
+        int accept = m_accept_states[0];
+
         result.set_alphabet_set(m_alphabet);
         std::set<int> visited;
         std::vector<int> work_list;

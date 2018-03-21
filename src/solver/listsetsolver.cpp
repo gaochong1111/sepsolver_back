@@ -146,7 +146,7 @@ z3::check_result listsetsolver::check_sat() {
         expr_tool::get_zero_order_vars(f_abs, bool_vars_set);
         expr_tool::get_first_order_vars(f_abs, fo_vars_set1);
 
-        expr_tool::write_file("f_abs.smt", f_abs);
+        // expr_tool::write_file("f_abs.smt", f_abs);
 
         std::set<z3::expr, exprcomp> mm_items;
         expr_tool::get_min_max_items(f_abs, mm_items);
@@ -170,7 +170,7 @@ z3::check_result listsetsolver::check_sat() {
                 f_abs = f_abs && add_item;
                 // f_abs = !z3::forall(dsts, !f_abs);
 
-                expr_tool::write_file("f_abs.smt", f_abs);
+                // expr_tool::write_file("f_abs.smt", f_abs);
 
         }
 
@@ -236,10 +236,10 @@ z3::check_result listsetsolver::check_sat() {
                                 }
                         }
 
-                        expr_tool::write_file("f_abs.smt", f_abs);
+                        // expr_tool::write_file("f_abs.smt", f_abs);
                         z3::expr phi_core = f_abs.substitute(src, dst);
 
-                        expr_tool::write_file("phi_core.smt", phi_core);
+                        // expr_tool::write_file("phi_core.smt", phi_core);
 
                         z3::expr phi_count = z3::mk_and(phi_count_items);
 
@@ -281,6 +281,8 @@ z3::check_result listsetsolver::check_sat() {
                                 // std::cout << "second order in phi_count: " << sovs.size() << std::endl;
 
                                 sat_rqspa rqspa("phi_core.dfa", phi_count, z3_ctx());
+                                // sat_rqspa rqspa("samples/dfa_test/nfa2.dfa", phi_count, z3_ctx());
+                                model.clear();
 
                                 z3::check_result sat_result = rqspa.check_sat(vars, model);
 
@@ -296,7 +298,7 @@ z3::check_result listsetsolver::check_sat() {
                                 long int diff = time_tl.diff();
                                 long int tv_sec = diff / 1000000;
                                 long int tv_usec = diff % 1000000;
-                                std::string info = logger().string_format("\nTotal time (sec): %ld.%06ld\n\n", tv_sec, tv_usec);
+                                std::string info = logger().string_format("\n pa Total time (sec): %ld.%06ld\n\n", tv_sec, tv_usec);
                                 std::cout << info;
 
                         }

@@ -52,7 +52,7 @@
         (= (min S4)  (+ (min S3) 6))
         (= (max S4) (+ (min S4) 0))
 
-        ; (= (- (* 5 (- (min S2) (min S1))) (* 3 (- (max S1) (max S2)))) 0)
+        (= (- (* 5 (- (min S2) (min S1))) (* 3 (- (max S1) (max S2)))) 0)
 
         (tobool
              (ssep (sls E S1 F S2) (sls E1  S3 F1  S4))

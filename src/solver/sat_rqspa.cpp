@@ -242,10 +242,13 @@ z3::expr sat_rqspa::generate_expr() {
         // get phi_core
         FA phi_core;
         read_file(phi_core, m_file_name, "q_");
-        // std::cout << "accept size: " << phi_core.get_accept_states().size() << std::endl;
-        phi_core = phi_core.get_flow(phi_core.get_accept_states()[0]);
+
+        std::cout << "accept: " << phi_core.get_accept_states().size() << ", states: " << phi_core.get_state_num() << std::endl;
+
+        phi_core = phi_core.get_flow(); // get nfa with one accept state
 
         phi_core.print("phi_core.dot");
+
 
         // state_code
         std::vector<int> state_code;
@@ -284,52 +287,56 @@ z3::expr sat_rqspa::generate_expr() {
                 // fa_result.print(fa_name);
         }
         m_result = fa_result;
-        // fa_result.print("fa_result.dot");
+        fa_result.print("fa_result.dot");
         FA pa = fa_result.state_as_edge();
 
         pa.print("pa.dot");
 
-        m_result.print("result.dot");
+        // m_result.print("result.dot");
 
-        z3::expr_vector flow_items(m_ctx);
+        // z3::expr_vector flow_items(m_ctx);
 
 
         // std::set<z3::expr, exprcomp> tpaq_set;
 
-        for (int i=0; i<pa.get_accept_states().size(); i++) {
-                std::set<int> x_ids;
-                int accept_state = pa.get_accept_states()[i];
+        // for (int i=0; i<pa.get_accept_states().size(); i++) {
+        std::set<int> x_ids;
+        int accept_state = pa.get_accept_states()[0];
 
-                std::cout << "compute flow : 0 -> " << accept_state << std::endl;
+        std::cout << "compute flow : 0 -> " << accept_state << std::endl;
 
-                pa.print_flow(accept_state);
+        // pa.print_flow(accept_state);
 
-                z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, m_tpaq_set);
+        z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, m_tpaq_set);
 
-                // std::cout << "x_ids: " << x_ids.size() << std::endl;
+        // expr_tool::write_file("samples/dfa_test/out/nfa2_phi.smt", pa_phi);
 
+        // exit(0);
 
-                // generate expr relation with vars in phi_count and new vars
+        // generate expr relation with vars in phi_count and new vars
 
-                z3::expr_vector var_items(m_ctx);
+        z3::expr_vector var_items(m_ctx);
 
-                for (int i=0; i<m_vars.size(); i++) {
-                        if (expr_tool::is_setint(m_vars[i])) {
-                                var_items.push_back(generate_sovar_expr(i, factors, x_ids));
+        for (int i=0; i<m_vars.size(); i++) {
+                if (expr_tool::is_setint(m_vars[i])) {
+                        var_items.push_back(generate_sovar_expr(i, factors, x_ids));
 
-                        } else {
-                                var_items.push_back(generate_fovar_expr(i, factors, x_ids));
-                        }
-                }
-
-                z3::expr var_item = z3::mk_and(var_items);
-
-                flow_items.push_back(pa_phi && var_item);
-
-                for (int id : x_ids) {
-                        new_ids.insert(id);
+                } else {
+                        var_items.push_back(generate_fovar_expr(i, factors, x_ids));
                 }
         }
+
+        z3::expr var_item = z3::mk_and(var_items);
+
+        expr_tool::write_file("var_item.smt", var_item);
+
+        // flow_items.push_back(pa_phi && var_item);
+        z3::expr flow_item = pa_phi && var_item;
+
+        for (int id : x_ids) {
+                new_ids.insert(id);
+        }
+        // }
 
         // substitute phi_count
         z3::expr_vector src(m_ctx);
@@ -365,7 +372,7 @@ z3::expr sat_rqspa::generate_expr() {
 
 
         // z3::expr result = flow_items[1]  && phi_count; //  phi_count &&
-        z3::expr result = z3::mk_or(flow_items) && ge_zero && phi_count; //  && phi_count;
+        z3::expr result = flow_item && ge_zero ; //&& phi_count; //  && phi_count;
 
 
         return result;
@@ -381,15 +388,15 @@ z3::expr sat_rqspa::generate_expr() {
 z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std::string, std::string>& m_model) {
         z3::expr pa_phi = generate_expr();
 
-        std::ofstream out("pa_phi.smt");
-        out << pa_phi << std::endl;
-        out.close();
-
         z3::solver solver(m_ctx);
         solver.add(pa_phi);
+        std::cout << "z3 is checking .....\n";
         z3::check_result result = solver.check();
 
         if (result == z3::sat) {
+
+                std::cout << "the result is sat! get models ....\n";
+
                 // get model
                 z3::model model = solver.get_model();
 
@@ -418,21 +425,32 @@ z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std:
                 std::vector< std::vector< std::string> > word;
                 m_result.print_model("sat_model.dot", new_ids, edge_to_count, model, m_ctx, word);
 
+                /*
+                for (int i=0; i<word.size(); i++) {
+                        std::cout << m_result.vec_to_str(word[i], ", ") << std::endl;
+                }
+                std::cout << std::endl;
+                */
+
                 // std::cout << "word len: " <<  word.size() << std::endl;
                 for (int i=0; i<vars.size(); i++) {
                         z3::expr var = vars[i];
-                        int pos = m_result.get_pos(var.to_string());
-                        std::string key = var.to_string();
+                        std::string key = expr_tool::get_mona_name(var);
+                        int pos = m_result.get_pos(key);
 
                         // std::cout << "var: "<< var << ", pos: "<< pos << ", sort: " << var.get_sort() <<std::endl;
 
 
                         if (var.is_bool()) {
+                                // std::cout << "word[0]: " <<  m_result.vec_to_str(word[0], ", ") << std::endl;
+                                // std::cout << "word[0][pos]: " << word[0][pos] << std::endl;
+                                // key = expr_tool::get_mona_name(var);
                                 if (word[0][pos] == "0") {
                                         m_model[key] = "false";
                                 } else {
                                         m_model[key] = "true";
                                 }
+                                // std::cout << key << ": " << m_model[key] << std::endl;
                         } else {
                                 std::string val;
                                 std::vector<std::string> val_vec;
@@ -480,6 +498,7 @@ z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std:
                 }
 
 
+
                 /*
                 // x_i
                 for (int id : new_ids) {
@@ -499,6 +518,7 @@ z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std:
                         }
                 }
                 */
+
 
                 return z3::sat;
 

@@ -1,0 +1,65 @@
+min_S2: 1
+max_S2: 2
+x_0: 1
+x_13: 1
+x_129: 1
+x_130: 1
+x_131: 1
+x_147: 1
+x_591: 1
+x_3383: 1
+model: 
+|[E1,1]| = true
+|[E,0]| = false
+E1 = 4
+F1 = 0
+E = 3
+F = 3
+S4 = {5}
+S1 = {1, 2}
+S2 = {1, 2}
+S3 = {4, 5}
+
+The result: sat
+
+Total time (sec): 1460.946743
+
+
+file_name: samples/dbs.smt
+list with set solver.
+Checking satisfiability.
+listsetsolver: 
+compute all tr closure
+get strt 
+data: (and (= (- (max S2) (min S2)) 1))
+check data 
+free_items size: 1
+(= (- (max S2) (min S2)) 1)
+ctx: 0, phi_core is_sat: 0
+ctx: 1, phi_core is_sat: 1
+execute mona -w -u phi_core.mona
+phi_count: (and (= (- (max S2) (min S2)) 1))
+accept: 4, states: 846
+add one accept.
+flow state size: 846
+flow edge count: 24348
+write graph into phi_core.dot
+valid ids: 846
+write graph into fa_result.dot
+valid ids: 846
+write graph into pa.dot
+valid ids: 847
+compute flow : 0 -> 846
+tpaq size: 13082
+z3 is checking .....
+the result is sat! get models ....
+write model into file: sat_model.dot
+min_S2: 1
+max_S2: 2
+model: 
+|[E1,1]| = true
+|[E,0]| = true
+E1 = 1
+F1 = 3
+E = 3
+
