@@ -71,6 +71,7 @@ public:
         FA state_as_edge();
 
         z3::expr to_expr(z3::context& ctx, int accept_state, std::set<int>& x_ids, std::set<z3::expr, exprcomp>& tpaq_set);
+        FA get_subgraph(int N=1);
         FA get_flow();
 
         void print(std::string name);

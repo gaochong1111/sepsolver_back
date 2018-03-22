@@ -162,16 +162,14 @@ void sat_rqspa::generate_NFA(z3::expr var, FA& nfa) {
 /**
  * gnerate first order var relation with new vars
  * @param idx : index in vars of phi_count
- * @param factors : state code factors
- * @param x_ids : related var ids
  */
-z3::expr sat_rqspa::generate_fovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids) {
+z3::expr sat_rqspa::generate_fovar_expr(int idx) {
 
         z3::expr_vector sum_items(m_ctx);
-        for (int cur : x_ids) {
+        for (int cur : m_new_ids) {
                 // i-th
-                int temp = cur % factors[idx];
-                temp = temp / factors[idx+1];
+                int temp = cur % m_factors[idx];
+                temp = temp / m_factors[idx+1];
                 if (temp == 0) {
                         std::string x_name = "x_";
                         x_name.append(std::to_string(cur));
@@ -184,19 +182,17 @@ z3::expr sat_rqspa::generate_fovar_expr(int idx, std::vector<int> factors, std::
 /**
  * gnerate second order var relation with new vars
  * @param idx : index in vars of phi_count
- * @param factors : state code factors
- * @param x_ids : related var ids
  */
-z3::expr sat_rqspa::generate_sovar_expr(int idx, std::vector<int> factors, std::set<int>& x_ids) {
+z3::expr sat_rqspa::generate_sovar_expr(int idx) {
         z3::expr result = m_ctx.bool_val(true);
 
         z3::expr_vector sum0_items(m_ctx);
         z3::expr_vector sum1_items(m_ctx);
         sum1_items.push_back(m_ctx.int_val(0));
-        for (int cur : x_ids) {
+        for (int cur : m_new_ids) {
                 // i-th
-                int temp = cur % factors[idx];
-                temp = temp / factors[idx+1];
+                int temp = cur % m_factors[idx];
+                temp = temp / m_factors[idx+1];
                 std::string x_name = "x_";
                 x_name.append(std::to_string(cur));
                 if (temp == 1) {
@@ -234,12 +230,9 @@ void sat_rqspa::get_vars() {
         m_vars.insert(m_vars.end(), sovs.begin(), sovs.end());
 }
 
-/**
- * pa -> z3 expr
- *
- */
-z3::expr sat_rqspa::generate_expr() {
-        // get phi_core
+
+FA sat_rqspa::generate_PA() {
+
         FA phi_core;
         read_file(phi_core, m_file_name, "q_");
 
@@ -270,12 +263,12 @@ z3::expr sat_rqspa::generate_expr() {
 
         // compute factors by state_code
         int acc = 1;
-        std::vector<int> factors;
-        factors.push_back(1);
+        // std::vector<int> factors;
+        m_factors.push_back(1);
 
         for (int i=state_code.size()-1; i>0; i--) {
                 acc *= state_code[i];
-                factors.insert(factors.begin(), acc);
+                m_factors.insert(m_factors.begin(), acc);
         }
 
         // compute product of all nfa
@@ -290,28 +283,33 @@ z3::expr sat_rqspa::generate_expr() {
         fa_result.print("fa_result.dot");
         FA pa = fa_result.state_as_edge();
 
-        pa.print("pa.dot");
+        pa.print("pa_before.dot");
 
-        // m_result.print("result.dot");
+        return pa;
 
-        // z3::expr_vector flow_items(m_ctx);
+}
+
+/**
+ * pa -> z3 expr
+ *
+ */
+z3::expr sat_rqspa::generate_expr(FA& pa) {
+        // henuristic
+
+        // pa = pa.get_subgraph();
+
+        // pa.print("pa.dot");
 
 
-        // std::set<z3::expr, exprcomp> tpaq_set;
-
-        // for (int i=0; i<pa.get_accept_states().size(); i++) {
-        std::set<int> x_ids;
+        // std::set<int> x_ids;
         int accept_state = pa.get_accept_states()[0];
 
         std::cout << "compute flow : 0 -> " << accept_state << std::endl;
 
         // pa.print_flow(accept_state);
+        m_new_ids.clear();
+        z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, m_new_ids, m_tpaq_set);
 
-        z3::expr pa_phi = pa.to_expr(m_ctx, accept_state, x_ids, m_tpaq_set);
-
-        // expr_tool::write_file("samples/dfa_test/out/nfa2_phi.smt", pa_phi);
-
-        // exit(0);
 
         // generate expr relation with vars in phi_count and new vars
 
@@ -319,25 +317,39 @@ z3::expr sat_rqspa::generate_expr() {
 
         for (int i=0; i<m_vars.size(); i++) {
                 if (expr_tool::is_setint(m_vars[i])) {
-                        var_items.push_back(generate_sovar_expr(i, factors, x_ids));
+                        var_items.push_back(generate_sovar_expr(i));
 
                 } else {
-                        var_items.push_back(generate_fovar_expr(i, factors, x_ids));
+                        var_items.push_back(generate_fovar_expr(i));
                 }
         }
 
         z3::expr var_item = z3::mk_and(var_items);
 
-        expr_tool::write_file("var_item.smt", var_item);
+        // expr_tool::write_file("var_item.smt", var_item);
 
-        // flow_items.push_back(pa_phi && var_item);
         z3::expr flow_item = pa_phi && var_item;
 
-        for (int id : x_ids) {
-                new_ids.insert(id);
-        }
-        // }
 
+        // std::cout << "phi_count: " << phi_count << std::endl;
+
+        z3::expr_vector ge_zero_items(m_ctx);
+
+        std::cout << "tpaq size: " << m_tpaq_set.size() << std::endl;
+
+        for (z3::expr tpaq : m_tpaq_set) {
+                ge_zero_items.push_back(tpaq >= 0);
+        }
+        z3::expr ge_zero = z3::mk_and(ge_zero_items);
+
+        // z3::expr result = flow_items[1]  && phi_count; //  phi_count &&
+        z3::expr result = flow_item && ge_zero; //  && phi_count;
+
+
+        return result;
+}
+
+z3::expr sat_rqspa::sub_phi_count() {
         // substitute phi_count
         z3::expr_vector src(m_ctx);
         z3::expr_vector dst(m_ctx);
@@ -359,23 +371,7 @@ z3::expr sat_rqspa::generate_expr() {
         }
 
         z3::expr phi_count = m_phi_count.substitute(src, dst);
-        // std::cout << "phi_count: " << phi_count << std::endl;
-
-        z3::expr_vector ge_zero_items(m_ctx);
-
-        std::cout << "tpaq size: " << m_tpaq_set.size() << std::endl;
-
-        for (z3::expr tpaq : m_tpaq_set) {
-                ge_zero_items.push_back(tpaq >= 0);
-        }
-        z3::expr ge_zero = z3::mk_and(ge_zero_items);
-
-
-        // z3::expr result = flow_items[1]  && phi_count; //  phi_count &&
-        z3::expr result = flow_item && ge_zero ; //&& phi_count; //  && phi_count;
-
-
-        return result;
+        return phi_count;
 }
 
 
@@ -386,144 +382,160 @@ z3::expr sat_rqspa::generate_expr() {
  * @return check_result
  */
 z3::check_result sat_rqspa::check_sat(std::vector<z3::expr>& vars, std::map<std::string, std::string>& m_model) {
-        z3::expr pa_phi = generate_expr();
+        FA pa = generate_PA();
+        z3::expr phi_count = sub_phi_count();
 
-        z3::solver solver(m_ctx);
-        solver.add(pa_phi);
-        std::cout << "z3 is checking .....\n";
-        z3::check_result result = solver.check();
+        int N = 1;
+        FA sub_pa;
+        for (int i=1; i<=N+1; i++) {
+                if (i <= N) {
+                        sub_pa = pa.get_subgraph(i);
+                        sub_pa.print("pa_henuristic_"+std::to_string(i)+".dot");
+                } else {
+                        sub_pa = pa;
+                }
 
-        if (result == z3::sat) {
+                z3::expr pa_phi = generate_expr(sub_pa) && phi_count;
 
-                std::cout << "the result is sat! get models ....\n";
+                z3::solver solver(m_ctx);
+                solver.add(pa_phi);
+                std::cout << "z3 is checking .....\n";
+                z3::check_result result = solver.check();
 
-                // get model
-                z3::model model = solver.get_model();
+                if (result == z3::sat) {
 
-                // std::cout << "tpaq size: " << m_tpaq_set.size() << std::endl;
-                std::map<std::string, int> edge_to_count; // edge -> times
-                for (z3::expr tpaq : m_tpaq_set) {
-                        if (model.has_interp(tpaq.decl())) {
-                                z3::expr val = model.get_const_interp(tpaq.decl());
-                                if (val.get_numeral_int() < 0) {
-                                        std::cout << tpaq << "  LESS THAN 0!\n";
-                                        exit(-1);
-                                }
-                                edge_to_count[tpaq.to_string()] = val.get_numeral_int();
+                        std::cout << "the result is sat! get models ....\n";
+                        // get model
+                        z3::model model = solver.get_model();
 
-                        } else {
-                                std::cout<< tpaq << "   NO TPAQ.\n";
+                        display_model(model, vars, m_model);
+
+                        return z3::sat;
+                }
+        }
+
+
+        // std::cout << "check result: " << result << std::endl;
+        return z3::unsat;
+}
+
+
+void sat_rqspa::display_model(z3::model& model, std::vector<z3::expr>& vars, std::map<std::string, std::string>& m_model) {
+
+
+
+        // std::cout << "tpaq size: " << m_tpaq_set.size() << std::endl;
+        std::map<std::string, int> edge_to_count; // edge -> times
+        for (z3::expr tpaq : m_tpaq_set) {
+                if (model.has_interp(tpaq.decl())) {
+                        z3::expr val = model.get_const_interp(tpaq.decl());
+                        if (val.get_numeral_int() < 0) {
+                                std::cout << tpaq << "  LESS THAN 0!\n";
                                 exit(-1);
                         }
+                        edge_to_count[tpaq.to_string()] = val.get_numeral_int();
+
+                } else {
+                        std::cout<< tpaq << "   NO TPAQ.\n";
+                        exit(-1);
                 }
-
-                // check init state in new_ids
-                if (new_ids.find(0) == new_ids.end()) {
-                        return z3::unsat;
-                }
-
-                std::vector< std::vector< std::string> > word;
-                m_result.print_model("sat_model.dot", new_ids, edge_to_count, model, m_ctx, word);
-
-                /*
-                for (int i=0; i<word.size(); i++) {
-                        std::cout << m_result.vec_to_str(word[i], ", ") << std::endl;
-                }
-                std::cout << std::endl;
-                */
-
-                // std::cout << "word len: " <<  word.size() << std::endl;
-                for (int i=0; i<vars.size(); i++) {
-                        z3::expr var = vars[i];
-                        std::string key = expr_tool::get_mona_name(var);
-                        int pos = m_result.get_pos(key);
-
-                        // std::cout << "var: "<< var << ", pos: "<< pos << ", sort: " << var.get_sort() <<std::endl;
-
-
-                        if (var.is_bool()) {
-                                // std::cout << "word[0]: " <<  m_result.vec_to_str(word[0], ", ") << std::endl;
-                                // std::cout << "word[0][pos]: " << word[0][pos] << std::endl;
-                                // key = expr_tool::get_mona_name(var);
-                                if (word[0][pos] == "0") {
-                                        m_model[key] = "false";
-                                } else {
-                                        m_model[key] = "true";
-                                }
-                                // std::cout << key << ": " << m_model[key] << std::endl;
-                        } else {
-                                std::string val;
-                                std::vector<std::string> val_vec;
-                                for (int j=1; j<word.size(); j++) {
-                                        if (word[j][pos] == "1") {
-                                                val = std::to_string(j-1);
-                                                if (var.is_int()) {
-                                                        break;
-                                                } else {
-                                                        val_vec.push_back(val);
-                                                }
-                                        }
-                                }
-
-                                //
-                                if (val_vec.size() == 0) {
-                                        m_model[key] = val;
-                                } else {
-                                        std::string val_str = "{";
-                                        val_str.append(m_result.vec_to_str(val_vec, ", ")).append("}");
-                                        m_model[key] = val_str;
-                                }
-                        }
-
-
-                        // std::cout << key << "->"  << m_model[key] << std::endl;
-
-                }
-
-
-                for (int i=0; i<m_vars.size(); i++) {
-                        z3::expr sov = m_vars[i];
-                        std::string var_name = "min_";
-                        var_name.append(sov.to_string());
-                        z3::expr min_v = m_ctx.int_const(var_name.c_str());
-                        var_name = "max_";
-                        var_name.append(sov.to_string());
-                        z3::expr max_v = m_ctx.int_const(var_name.c_str());
-                        z3::expr min_val = model.get_const_interp(min_v.decl());
-                        z3::expr max_val = model.get_const_interp(max_v.decl());
-
-
-                        std::cout << min_v << ": " << min_val << std::endl;
-                        std::cout << max_v << ": " << max_val << std::endl;
-                }
-
-
-
-                /*
-                // x_i
-                for (int id : new_ids) {
-                        std::string pre = "x_";
-                        pre.append(std::to_string(id));
-                        z3::expr x_i = m_ctx.int_const(pre.c_str());
-                        if (model.has_interp(x_i.decl())) {
-                                z3::expr val = model.get_const_interp(x_i.decl());
-                                if (val.get_numeral_int() > 0) {
-                                        std::cout << x_i << ": " << val << std::endl;
-                                } else {
-                                        if (val.get_numeral_int() < 0) {
-                                                std::cout << x_i << " LESS THAN 0!\n";
-                                                exit(-1);
-                                        }
-                                }
-                        }
-                }
-                */
-
-
-                return z3::sat;
-
-        } else {
-                std::cout << "check result: " << result << std::endl;
-                return z3::unsat;
         }
+
+
+        std::vector< std::vector< std::string> > word;
+        m_result.print_model("sat_model.dot", m_new_ids, edge_to_count, model, m_ctx, word);
+
+        /*
+          for (int i=0; i<word.size(); i++) {
+          std::cout << m_result.vec_to_str(word[i], ", ") << std::endl;
+          }
+          std::cout << std::endl;
+        */
+
+        // std::cout << "word len: " <<  word.size() << std::endl;
+        for (int i=0; i<vars.size(); i++) {
+                z3::expr var = vars[i];
+                std::string key = expr_tool::get_mona_name(var);
+                int pos = m_result.get_pos(key);
+
+                // std::cout << "var: "<< var << ", pos: "<< pos << ", sort: " << var.get_sort() <<std::endl;
+
+
+                if (var.is_bool()) {
+                        // std::cout << "word[0]: " <<  m_result.vec_to_str(word[0], ", ") << std::endl;
+                        // std::cout << "word[0][pos]: " << word[0][pos] << std::endl;
+                        // key = expr_tool::get_mona_name(var);
+                        if (word[0][pos] == "0") {
+                                m_model[key] = "false";
+                        } else {
+                                m_model[key] = "true";
+                        }
+                        // std::cout << key << ": " << m_model[key] << std::endl;
+                } else {
+                        std::string val;
+                        std::vector<std::string> val_vec;
+                        for (int j=1; j<word.size(); j++) {
+                                if (word[j][pos] == "1") {
+                                        val = std::to_string(j-1);
+                                        if (var.is_int()) {
+                                                break;
+                                        } else {
+                                                val_vec.push_back(val);
+                                        }
+                                }
+                        }
+
+                        //
+                        if (val_vec.size() == 0) {
+                                m_model[key] = val;
+                        } else {
+                                std::string val_str = "{";
+                                val_str.append(m_result.vec_to_str(val_vec, ", ")).append("}");
+                                m_model[key] = val_str;
+                        }
+                }
+
+
+                // std::cout << key << "->"  << m_model[key] << std::endl;
+
+        }
+
+
+        for (int i=0; i<m_vars.size(); i++) {
+                z3::expr sov = m_vars[i];
+                std::string var_name = "min_";
+                var_name.append(sov.to_string());
+                z3::expr min_v = m_ctx.int_const(var_name.c_str());
+                var_name = "max_";
+                var_name.append(sov.to_string());
+                z3::expr max_v = m_ctx.int_const(var_name.c_str());
+                z3::expr min_val = model.get_const_interp(min_v.decl());
+                z3::expr max_val = model.get_const_interp(max_v.decl());
+
+
+                std::cout << min_v << ": " << min_val << std::endl;
+                std::cout << max_v << ": " << max_val << std::endl;
+        }
+
+
+
+        /*
+        // x_i
+        for (int id : m_new_ids) {
+        std::string pre = "x_";
+        pre.append(std::to_string(id));
+        z3::expr x_i = m_ctx.int_const(pre.c_str());
+        if (model.has_interp(x_i.decl())) {
+        z3::expr val = model.get_const_interp(x_i.decl());
+        if (val.get_numeral_int() > 0) {
+        std::cout << x_i << ": " << val << std::endl;
+        } else {
+        if (val.get_numeral_int() < 0) {
+        std::cout << x_i << " LESS THAN 0!\n";
+        exit(-1);
+        }
+        }
+        }
+        }
+        */
 }

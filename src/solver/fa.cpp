@@ -1,6 +1,7 @@
 #include "fa.h"
 #include <iostream>
 #include <fstream>
+#include <random>
 
 
 FA::FA(const FA& other) {
@@ -179,10 +180,107 @@ FA FA::state_as_edge() {
         return result;
 }
 
+/**
+ * get subgraph of G
+ */
+FA FA::get_subgraph(int N) {
+        FA result;
+
+        std::set<int> valid_ids;
+        get_valid_states(m_accept_states[0], valid_ids);
+
+        std::default_random_engine generator;
+
+
+        result.set_alphabet_set(m_alphabet);
+        std::set<int> visited;
+        std::vector<int> work_list;
+        work_list.push_back(0);
+
+        std::vector<transition> transitions;
+
+        int edge_count = 0;
+
+        while(work_list.size() > 0) {
+                int cur_state = work_list.back();
+                work_list.pop_back();
+                if (visited.find(cur_state) == visited.end()) {
+                        // forward search
+                        automata::out_edge_iterator i_start, i_end;
+
+                        tie(i_start, i_end) = boost::out_edges(cur_state, m_fa);
+
+                        /*
+                        int out_degree = i_end - i_start;
+
+                        std::cout << "out degree: " << size << std::endl;
+                        std::uniform_int_distribution<int> distribution(0, out_degree);
+                        std::set<int> selected;
+                        for (int i=0; i<N; i++) {
+                                int rand_num = distribution(generator);
+                                selected.insert(rand_num);
+                        }
+                        */
+                        int i = 0;
+                        // std::cout << "cur: " << cur_state << " select: " ;
+
+                        for(; i_start != i_end; ++i_start) {
+                                int i_dst = boost::target(*i_start, m_fa);
+
+                                edge_count ++;
+                                // std::cout << cur_state << " -> " << i_dst << std::endl;
+
+                                if (valid_ids.find(i_dst) != valid_ids.end() &&
+                                    (i<N || i_dst == cur_state)) {
+
+                                        // std::cout << " " << i_dst;
+                                        work_list.push_back(i_dst);
+
+                                        transition tr;
+                                        tr.src = cur_state;
+                                        tr.dst = i_dst;
+                                        tr.info = m_fa[*i_start];
+                                        transitions.push_back(tr);
+                                        if (i_dst != cur_state && visited.find(i_dst) == visited.end()) i++;
+                                }
+                        }
+                        // std::cout << std::endl;
+                        visited.insert(cur_state);
+                }
+        }
+
+        // add vertex
+        result.add_states(m_state_num, "q_");
+
+        std::cout << "edge_count: " << edge_count << std::endl;
+
+        std::cout << "sub edge_count: " << transitions.size() << std::endl;
+
+        // add transitions
+        for (int i=0; i<transitions.size(); i++) {
+                transition tr = transitions[i];
+                result.add_transition(tr);
+        }
+
+        // set info
+        result.m_init_state = m_init_state;
+        result.set_accept_states(m_accept_states);
+
+        // bundle
+        std::map<std::string, int> bundles =  m_fa[boost::graph_bundle];
+        std::map<std::string, int>::iterator it = bundles.begin();
+        while( it != bundles.end()) {
+                result.m_fa[boost::graph_bundle][it->first] = it->second;
+                it++;
+        }
+
+        return result;
+
+}
+
 
 /**
  * get flow as NFA
- * @param: accept: accept state
  */
 FA FA::get_flow() {
         FA result;
@@ -526,26 +624,26 @@ void FA::print(std::string name) {
 
         // out vertex
         /*
-        std::set<int> visited;
-        std::vector<int> work_list;
-        work_list.push_back(0);
+          std::set<int> visited;
+          std::vector<int> work_list;
+          work_list.push_back(0);
 
-        while(work_list.size() > 0) {
-                int cur_state = work_list.back();
-                work_list.pop_back();
-                if (visited.find(cur_state) == visited.end()) {
-                        visited.insert(cur_state);
-                        // forward search
-                        automata::out_edge_iterator i_start, i_end;
-                        tie(i_start, i_end) = boost::out_edges(cur_state, m_fa);
-                        for(; i_start != i_end; ++i_start) {
-                                int i_dst = boost::target(*i_start, m_fa);
-                                if (visited.find(i_dst) == visited.end()) {
-                                        work_list.push_back(i_dst);
-                                }
-                        }
-                }
-        }
+          while(work_list.size() > 0) {
+          int cur_state = work_list.back();
+          work_list.pop_back();
+          if (visited.find(cur_state) == visited.end()) {
+          visited.insert(cur_state);
+          // forward search
+          automata::out_edge_iterator i_start, i_end;
+          tie(i_start, i_end) = boost::out_edges(cur_state, m_fa);
+          for(; i_start != i_end; ++i_start) {
+          int i_dst = boost::target(*i_start, m_fa);
+          if (visited.find(i_dst) == visited.end()) {
+          work_list.push_back(i_dst);
+          }
+          }
+          }
+          }
 
 
         */
@@ -590,23 +688,23 @@ void FA::print(std::string name) {
 
 
 /*
-        // out edges
-        index_t index;
-        vertex_t v1, v2;
-        std::pair<edge_iter, edge_iter> ep;
-        edge_iter ei, ei_end;
-        for (tie(ei, ei_end)=edges(m_fa); ei!=ei_end; ++ei) {
-                v1 = boost::source(*ei, m_fa);
-                v2 = boost::target(*ei, m_fa);
+// out edges
+index_t index;
+vertex_t v1, v2;
+std::pair<edge_iter, edge_iter> ep;
+edge_iter ei, ei_end;
+for (tie(ei, ei_end)=edges(m_fa); ei!=ei_end; ++ei) {
+v1 = boost::source(*ei, m_fa);
+v2 = boost::target(*ei, m_fa);
 
-                out << "node_" << index[v1] << " -> " << "node_" << index[v2] << "[label=\"";
+out << "node_" << index[v1] << " -> " << "node_" << index[v2] << "[label=\"";
 
-                std::vector<std::string> edge = m_fa[*ei];
+std::vector<std::string> edge = m_fa[*ei];
 
-                out << vec_to_str(edge);
+out << vec_to_str(edge);
 
-                out << "\"];\n";
-        }
+out << "\"];\n";
+}
 */
 
         out << "}\n";
@@ -624,6 +722,7 @@ bool FA::has_path(int src, int dst,  std::set<int>& ids, std::map<std::string, i
 
         // std::cout << "find path: from: " << src << " to " << dst << std::endl;
         if (src == dst) return true;
+
         std::vector<int> work_list;
         work_list.push_back(src);
         std::set<int> visited;
@@ -647,8 +746,8 @@ bool FA::has_path(int src, int dst,  std::set<int>& ids, std::map<std::string, i
                                 t_paq_name.append(std::to_string(cur+1)).append("_").append(std::to_string(id)).append("_").append(std::to_string(target+1));
 
                                 if (edge_count.find(t_paq_name) == edge_count.end()) {
-                                        std::cout << "IN HAS_PATH: t_paq: " << t_paq_name << " NOT EXISTS!\n";
-                                        exit(-1);
+                                        // std::cout << "IN HAS_PATH: t_paq: " << t_paq_name << " NOT EXISTS!\n";
+                                        continue;
                                 }
                                 int i_edge_count = edge_count[t_paq_name];
                                 if (i_edge_count > 0) {
@@ -675,142 +774,142 @@ void FA::print_model(std::string file_name, std::set<int>& ids, std::map<std::st
 
         /*
 
-         z3::expr result = ctx.bool_val(true);
-        // consitent
-        std::map<int, std::vector<z3::expr> > xi_to_tpaq; // x_i = \Sigma (x_paq)
+          z3::expr result = ctx.bool_val(true);
+          // consitent
+          std::map<int, std::vector<z3::expr> > xi_to_tpaq; // x_i = \Sigma (x_paq)
 
-        z3::expr_vector consistent_items(ctx); // consistent_items
-        z3::expr_vector connected_items(ctx); // conneted_items
+          z3::expr_vector consistent_items(ctx); // consistent_items
+          z3::expr_vector connected_items(ctx); // conneted_items
 
-        std::vector<z3::expr> in_flow_vec;
+          std::vector<z3::expr> in_flow_vec;
 
-        std::map<int, int> id_to_pos; // in in_flow_vec
-        std::map<int, std::map<int, std::vector<z3::expr> > > id_to_neighbors;
+          std::map<int, int> id_to_pos; // in in_flow_vec
+          std::map<int, std::map<int, std::vector<z3::expr> > > id_to_neighbors;
 
-        std::vector<int> work_list;
-        int accept_state = m_accept_states[0];
-        work_list.push_back(accept_state);
-
-
-
-        std::set<int> visited;
-        while(work_list.size() > 0) {
-                int i = work_list.back();
-                work_list.pop_back();
-                if (visited.find(i) != visited.end()) {
-                        continue;
-                }
-                visited.insert(i);
-                automata::in_edge_iterator i_start, i_end;
-                tie(i_start, i_end) = boost::in_edges(i, m_fa);
-                z3::expr_vector in_items(ctx);
-
-                if (i==0) {
-                        in_items.push_back(ctx.int_val(1));
-                }
-                for (; i_start != i_end; ++i_start) {
-                        int i_src = boost::source(*i_start, m_fa);
-
-                        if (visited.find(i_src) == visited.end()) {
-                                work_list.push_back(i_src);
-                        }
-
-                        std::string key = vec_to_str(m_fa[*i_start]);
-                        int i_edge = m_fa[boost::graph_bundle][key];
-
-                        // make var t_p_a_q
-                        z3::expr t_p_a_q = expr_tool::mk_int_var(ctx, "t_", i_src+1, i, i+1);
-                        in_items.push_back(t_p_a_q);
-
-                        // tpaq_set.insert(t_p_a_q);
-
-                        // id_to_neigbors
-
-                }
-
-
-                automata::out_edge_iterator o_start, o_end;
-                tie(o_start, o_end) = boost::out_edges(i, m_fa);
-                z3::expr_vector out_items(ctx);
-                if (i==accept_state) {
-                        out_items.push_back(ctx.int_val(1));
-                }
-                for (; o_start != o_end; ++o_start) {
-                        int i_target = boost::target(*o_start, m_fa);
-
-                        // if (visited.find(i_target) != visited.end()) {
-                        std::string key = vec_to_str(m_fa[*o_start]);
-                        int i_edge = m_fa[boost::graph_bundle][key];
-                        // make var t_p_a_q
-                        z3::expr t_p_a_q = expr_tool::mk_int_var(ctx, "t_", i+1, i_target, i_target+1);
-
-                        out_items.push_back(t_p_a_q);
-
-                }
-
-                if (in_items.size() == 0) {
-                        std::cout << "state: " << i << ", indegree is zero\n";
-                        exit(-1);
-                }
-                if (out_items.size() == 0) {
-                        std::cout << "state: " << i << ", outdegree is zero\n";
-                        exit(-1);
-                }
-
-                z3::expr in_item = z3::sum(in_items);
-                z3::expr out_item = z3::sum(out_items);
-
-                std::cout << "state: " << i << ", in_item: " << model.eval(in_item) << ", out_item: " << model.eval(out_item) << std::endl;
-                for (int k=0; k<in_items.size(); k++) {
-                        std::cout << "    " << in_items[k] << ": " << model.eval(in_items[k]) << std::endl;
-                }
-
-                for (int k=0; k<out_items.size(); k++) {
-                        std::cout << "    " << out_items[k] << ": " << model.eval(out_items[k]) << std::endl;
-                }
+          std::vector<int> work_list;
+          int accept_state = m_accept_states[0];
+          work_list.push_back(accept_state);
 
 
 
-                id_to_pos[i] = in_flow_vec.size();
-                in_flow_vec.push_back(in_item);
+          std::set<int> visited;
+          while(work_list.size() > 0) {
+          int i = work_list.back();
+          work_list.pop_back();
+          if (visited.find(i) != visited.end()) {
+          continue;
+          }
+          visited.insert(i);
+          automata::in_edge_iterator i_start, i_end;
+          tie(i_start, i_end) = boost::in_edges(i, m_fa);
+          z3::expr_vector in_items(ctx);
 
-                z3::expr i_item = (in_item == z3::sum(out_items));
-                consistent_items.push_back(i_item);
+          if (i==0) {
+          in_items.push_back(ctx.int_val(1));
+          }
+          for (; i_start != i_end; ++i_start) {
+          int i_src = boost::source(*i_start, m_fa);
 
-        }
+          if (visited.find(i_src) == visited.end()) {
+          work_list.push_back(i_src);
+          }
+
+          std::string key = vec_to_str(m_fa[*i_start]);
+          int i_edge = m_fa[boost::graph_bundle][key];
+
+          // make var t_p_a_q
+          z3::expr t_p_a_q = expr_tool::mk_int_var(ctx, "t_", i_src+1, i, i+1);
+          in_items.push_back(t_p_a_q);
+
+          // tpaq_set.insert(t_p_a_q);
+
+          // id_to_neigbors
+
+          }
 
 
+          automata::out_edge_iterator o_start, o_end;
+          tie(o_start, o_end) = boost::out_edges(i, m_fa);
+          z3::expr_vector out_items(ctx);
+          if (i==accept_state) {
+          out_items.push_back(ctx.int_val(1));
+          }
+          for (; o_start != o_end; ++o_start) {
+          int i_target = boost::target(*o_start, m_fa);
+
+          // if (visited.find(i_target) != visited.end()) {
+          std::string key = vec_to_str(m_fa[*o_start]);
+          int i_edge = m_fa[boost::graph_bundle][key];
+          // make var t_p_a_q
+          z3::expr t_p_a_q = expr_tool::mk_int_var(ctx, "t_", i+1, i_target, i_target+1);
+
+          out_items.push_back(t_p_a_q);
+
+          }
+
+          if (in_items.size() == 0) {
+          std::cout << "state: " << i << ", indegree is zero\n";
+          exit(-1);
+          }
+          if (out_items.size() == 0) {
+          std::cout << "state: " << i << ", outdegree is zero\n";
+          exit(-1);
+          }
+
+          z3::expr in_item = z3::sum(in_items);
+          z3::expr out_item = z3::sum(out_items);
+
+          std::cout << "state: " << i << ", in_item: " << model.eval(in_item) << ", out_item: " << model.eval(out_item) << std::endl;
+          for (int k=0; k<in_items.size(); k++) {
+          std::cout << "    " << in_items[k] << ": " << model.eval(in_items[k]) << std::endl;
+          }
+
+          for (int k=0; k<out_items.size(); k++) {
+          std::cout << "    " << out_items[k] << ": " << model.eval(out_items[k]) << std::endl;
+          }
+
+
+
+          id_to_pos[i] = in_flow_vec.size();
+          in_flow_vec.push_back(in_item);
+
+          z3::expr i_item = (in_item == z3::sum(out_items));
+          consistent_items.push_back(i_item);
+
+          }
 
 
 
 
-        // consitent phi
-        z3::expr consistent_phi = z3::mk_and(consistent_items);
-
-        // connected_phi
-        z3::expr connected_phi = z3::mk_and(connected_items);
 
 
-        // sigma items
-        z3::expr_vector sum_items(ctx);
-        // std::set<z3::expr, exprcomp> tpaq_set;
+          // consitent phi
+          z3::expr consistent_phi = z3::mk_and(consistent_items);
 
-        std::map<int, std::vector<z3::expr> >::iterator it2 = xi_to_tpaq.begin();
-        while (it2 != xi_to_tpaq.end()) {
-                int i = it2->first;
-                std::vector<z3::expr> t_paq_vec = it2->second;
-                z3::expr x_i = expr_tool::mk_int_var(ctx, "x_", i);
-                z3::expr_vector s_items(ctx);
-                for (int j=0; j<t_paq_vec.size(); j++) {
-                        s_items.push_back(t_paq_vec[j]);
-                }
-                sum_items.push_back(x_i == z3::sum(s_items));
-                it2++;
-        }
+          // connected_phi
+          z3::expr connected_phi = z3::mk_and(connected_items);
 
 
-        z3::expr sum_phi = z3::mk_and(sum_items);
-*/
+          // sigma items
+          z3::expr_vector sum_items(ctx);
+          // std::set<z3::expr, exprcomp> tpaq_set;
+
+          std::map<int, std::vector<z3::expr> >::iterator it2 = xi_to_tpaq.begin();
+          while (it2 != xi_to_tpaq.end()) {
+          int i = it2->first;
+          std::vector<z3::expr> t_paq_vec = it2->second;
+          z3::expr x_i = expr_tool::mk_int_var(ctx, "x_", i);
+          z3::expr_vector s_items(ctx);
+          for (int j=0; j<t_paq_vec.size(); j++) {
+          s_items.push_back(t_paq_vec[j]);
+          }
+          sum_items.push_back(x_i == z3::sum(s_items));
+          it2++;
+          }
+
+
+          z3::expr sum_phi = z3::mk_and(sum_items);
+        */
 
 
 
@@ -867,7 +966,7 @@ void FA::print_model(std::string file_name, std::set<int>& ids, std::map<std::st
                                 std::string t_paq_name  = t_paq.to_string();
 
                                 if (edge_count.find(t_paq_name) == edge_count.end()) {
-                                        std::cout << "t_paq: " << t_paq_name << " NOT EXISTS!\n";
+                                        // std::cout << "IN PRINT_MODEL: t_paq: " << t_paq_name << " NOT EXISTS!\n";
                                         // exit(-1);
                                         continue;
 
